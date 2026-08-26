@@ -20,7 +20,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <!-- Versiones de dependencias no gestionadas por el BOM de Spring Boot -->
     <lombok.version>1.18.36</lombok.version>
-    <mysql.connector.version>9.3.0</mysql.connector.version>
+    <postgresql.version>42.7.4</postgresql.version>
     <javamail.version>1.6.2</javamail.version>
     <bcrypt.version>0.10.2</bcrypt.version>
     <!-- Declarativas: Mockito y Jacoco siguen siendo explícitas para tener control -->
@@ -65,11 +65,11 @@
       <scope>provided</scope>
     </dependency>
 
-    <!-- MySQL JDBC Connector -->
+    <!-- PostgreSQL JDBC driver -->
     <dependency>
-      <groupId>com.mysql</groupId>
-      <artifactId>mysql-connector-j</artifactId>
-      <version>${mysql.connector.version}</version>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>${postgresql.version}</version>
     </dependency>
 
     <!-- JavaMail API (javax.mail legacy — NO migrado a jakarta.mail, intencional) -->

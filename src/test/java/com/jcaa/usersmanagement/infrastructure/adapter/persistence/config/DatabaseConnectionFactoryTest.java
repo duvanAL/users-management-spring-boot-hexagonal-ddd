@@ -27,7 +27,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class DatabaseConnectionFactoryTest {
 
   private static final String HOST = "localhost";
-  private static final int PORT = 3306;
+  private static final int PORT = 5432;
   private static final String DB_NAME = "test_db";
   private static final String USERNAME = "test_user";
   private static final String PASSWORD = "test_pass";
@@ -58,6 +58,17 @@ class DatabaseConnectionFactoryTest {
       // Assert
       assertSame(mockConnection, result, "must return the connection provided by DriverManager");
     }
+  }
+
+  @Test
+  @DisplayName("buildJdbcUrl() creates a PostgreSQL URL with configurable sslmode")
+  void shouldBuildPostgresUrlWithSslMode() {
+    final DatabaseConfig secureConfig =
+        new DatabaseConfig(HOST, PORT, DB_NAME, USERNAME, PASSWORD, "verify-full");
+
+    assertEquals(
+        "jdbc:postgresql://localhost:5432/test_db?sslmode=verify-full",
+        secureConfig.buildJdbcUrl());
   }
 
   // ── createConnection() — SQLException → PersistenceException

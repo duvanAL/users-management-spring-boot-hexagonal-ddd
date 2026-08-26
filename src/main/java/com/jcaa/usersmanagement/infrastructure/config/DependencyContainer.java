@@ -14,9 +14,10 @@ import com.jcaa.usersmanagement.application.service.GetUserByIdService;
 import com.jcaa.usersmanagement.application.service.LoginService;
 import com.jcaa.usersmanagement.application.service.UpdateUserService;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.JavaMailEmailSenderAdapter;
+import com.jcaa.usersmanagement.infrastructure.adapter.email.NoOpEmailSenderAdapter;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.SmtpConfig;
 import com.jcaa.usersmanagement.infrastructure.adapter.persistence.config.DatabaseConfig;
-import com.jcaa.usersmanagement.infrastructure.adapter.persistence.repository.UserRepositoryMySQL;
+import com.jcaa.usersmanagement.infrastructure.adapter.persistence.repository.UserRepositoryPostgres;
 import com.jcaa.usersmanagement.infrastructure.entrypoint.desktop.controller.UserController;
 import com.zaxxer.hikari.HikariDataSource;
 import jakarta.validation.Validator;
@@ -29,6 +30,8 @@ public final class DependencyContainer {
   private static final String DB_NAME = "db.name";
   private static final String DB_USER = "db.username";
   private static final String DB_PASSWORD = "db.password";
+  private static final String DB_SSLMODE = "db.sslmode";
+  private static final String EMAIL_ENABLED = "app.email.enabled";
 
   private static final String SMTP_HOST = "smtp.host";
   private static final String SMTP_PORT = "smtp.port";
@@ -43,10 +46,12 @@ public final class DependencyContainer {
     final AppProperties properties = new AppProperties();
 
     final DataSource dataSource = buildDataSource(properties);
-    final UserRepositoryMySQL userRepository = new UserRepositoryMySQL(dataSource);
+    final UserRepositoryPostgres userRepository = new UserRepositoryPostgres(dataSource);
 
-    final JavaMailEmailSenderAdapter emailSender =
-        new JavaMailEmailSenderAdapter(buildSmtpConfig(properties));
+    final com.jcaa.usersmanagement.application.port.out.EmailSenderPort emailSender =
+        properties.getBoolean(EMAIL_ENABLED)
+            ? new JavaMailEmailSenderAdapter(buildSmtpConfig(properties))
+            : new NoOpEmailSenderAdapter();
     final EmailNotificationService emailNotification = new EmailNotificationService(emailSender);
 
     // Construir Validator para las validaciones en la capa de aplicación
@@ -83,7 +88,8 @@ public final class DependencyContainer {
             properties.getInt(DB_PORT),
             properties.get(DB_NAME),
             properties.get(DB_USER),
-            properties.get(DB_PASSWORD));
+            properties.get(DB_PASSWORD),
+            properties.get(DB_SSLMODE));
     final HikariDataSource ds = new HikariDataSource();
     ds.setJdbcUrl(config.buildJdbcUrl());
     ds.setUsername(config.username());

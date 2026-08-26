@@ -14,7 +14,7 @@ application/
   service/       ← Service implementations — @Service, inject ports via constructor
   service/dto/   ← command/ and query/ records with Bean Validation constraints
 infrastructure/
-  adapter/persistence/   ← UserRepositoryMySQL: implements ALL out-ports via raw JDBC (no JPA)
+  adapter/persistence/   ← UserRepositoryPostgres: implements ALL out-ports via raw JDBC (no JPA)
   adapter/email/         ← JavaMailEmailSenderAdapter (javax.mail, NOT jakarta.mail — intentional)
   entrypoint/desktop/    ← UserManagementCli → UserController (no Spring MVC)
   config/                ← DependencyContainer (manual wiring, not Spring @Bean)
@@ -29,7 +29,7 @@ infrastructure/
 | File | Purpose |
 |---|---|
 | `infrastructure/config/DependencyContainer.java` | Manual DI root — wires everything |
-| `infrastructure/adapter/persistence/repository/UserRepositoryMySQL.java` | Single class implements 6 out-ports via raw JDBC |
+| `infrastructure/adapter/persistence/repository/UserRepositoryPostgres.java` | Single class implements 6 out-ports via raw JDBC |
 | `domain/model/UserModel.java` | Core aggregate — immutable (`@Value`), factory method `create()`, state transitions `activate()`/`deactivate()` |
 | `domain/valueobject/UserPassword.java` | `fromPlainText()` hashes with BCrypt; `fromHash()` for DB reads |
 | `infrastructure/entrypoint/desktop/controller/UserController.java` | Desktop controller (plain class, no Spring MVC) |

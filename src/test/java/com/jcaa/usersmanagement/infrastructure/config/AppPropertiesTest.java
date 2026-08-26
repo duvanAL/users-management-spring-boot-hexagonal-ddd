@@ -25,7 +25,7 @@ class AppPropertiesTest {
   private static final String KEY_MISSING = "nonexistent.key";
 
   private static final String EXPECTED_STRING = "localhost";
-  private static final int EXPECTED_INT = 3306;
+  private static final int EXPECTED_INT = 5432;
 
   private AppProperties appProperties;
 
