@@ -5,7 +5,7 @@
 -- =============================================
 
 CREATE TABLE IF NOT EXISTS users (
-    id          UUID         NOT NULL PRIMARY KEY,
+    id          VARCHAR(36)  NOT NULL PRIMARY KEY,
     name        VARCHAR(100) NOT NULL,
     email       VARCHAR(150) NOT NULL UNIQUE,
     password    VARCHAR(255) NOT NULL,
@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS users (
 -- Usuario administrador inicial (password: Admin1234!)
 INSERT INTO users (id, name, email, password, role, status)
 VALUES (
-    '00000000-0000-0000-0000-000000000001'::uuid,
+    '00000000-0000-0000-0000-000000000001',
     'Administrador',
     'admin@example.com',
     '$2a$12$JEjeZBiz/ZkZOKagPJrutespQSn2rMVZ8KZzE.mlYnFfZdsyJAHau',
