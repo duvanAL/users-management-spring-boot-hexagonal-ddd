@@ -74,3 +74,15 @@ Build Command: docker build -t users-management-api .
 Start Command: definido por el Dockerfile
 Health Check Path: /health
 ```
+
+## CI/CD con GitHub Actions y Render
+
+El workflow `CI` se ejecuta en cada pull request y en cada push a `main`. Ejecuta todas las pruebas, genera el reporte JaCoCo y construye la imagen Docker.
+
+El workflow `Deploy to Render` se ejecuta solamente despues de un CI exitoso en `main`. Para activarlo:
+
+1. En Render crea el Web Service desde `render.yaml` y genera un **Deploy Hook**.
+2. En GitHub abre `Settings > Secrets and variables > Actions > New repository secret`.
+3. Crea el secreto `RENDER_DEPLOY_HOOK_URL` con la URL del Deploy Hook de Render.
+
+El hook no se guarda en el repositorio. Las credenciales PostgreSQL siguen configurandose exclusivamente como variables secretas del servicio en Render.

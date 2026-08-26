@@ -5,6 +5,7 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     plan: free
+    autoDeployTrigger: "off"
     healthCheckPath: /health
     envVars:
       - key: DB_HOST
