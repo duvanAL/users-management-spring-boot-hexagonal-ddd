@@ -1,12 +1,12 @@
 # Users Management - Spring Boot Hexagonal DDD
 
 Aplicacion REST de gestion de usuarios basada en arquitectura hexagonal y DDD.
-Este fork esta preparado para `Duvan_Mesa/users-management-spring-boot-hexagonal-ddd` y PostgreSQL remoto.
+Este fork esta preparado para `duvanAL/users-management-spring-boot-hexagonal-ddd` y PostgreSQL remoto.
 
 ## Fork y remotos
 
 ```powershell
-git remote add origin https://github.com/Duvan_Mesa/users-management-spring-boot-hexagonal-ddd.git
+git remote add origin https://github.com/duvanAL/users-management-spring-boot-hexagonal-ddd.git
 git remote -v
 ```
 
@@ -60,3 +60,17 @@ DELETE /api/users/{id}
 ```
 
 Con `APP_EMAIL_ENABLED=false`, crear y actualizar usuarios no intentan conectarse a SMTP. Para activar correo real, define `APP_EMAIL_ENABLED=true` y las variables `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_ADDRESS` y `SMTP_FROM_NAME`.
+
+## Despliegue en Render
+
+El repositorio incluye `Dockerfile` y `render.yaml`. En Render puedes crear el servicio desde **New + > Blueprint** y seleccionar este repositorio. El servicio usa Java 17 dentro de Docker, toma el puerto asignado por Render mediante `PORT` y expone `/health` como comprobacion de salud.
+
+En la configuracion del servicio define los valores reales de `DB_HOST`, `DB_NAME`, `DB_USERNAME` y `DB_PASSWORD`. `render.yaml` deja esas variables como secretas y establece `DB_SSLMODE=require` para PostgreSQL remoto. Antes del primer despliegue, ejecuta `src/main/resources/schema.sql` una vez contra la base PostgreSQL remota.
+
+Si configuras el servicio manualmente en lugar de usar el Blueprint, usa:
+
+```text
+Build Command: docker build -t users-management-api .
+Start Command: definido por el Dockerfile
+Health Check Path: /health
+```
