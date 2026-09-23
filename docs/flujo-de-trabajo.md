@@ -73,8 +73,9 @@ guía; las partes ya implementadas se revisarán y completarán según lo necesa
 5. **Administrador inicial.** Reemplazar el usuario fijo del SQL por una creación
    opcional mediante `SEED_ADMIN_ENABLED`, `SEED_ADMIN_EMAIL` y
    `SEED_ADMIN_PASSWORD`.
-6. **Correo opcional.** Verificar que la aplicación funciona sin credenciales
-   SMTP cuando `APP_EMAIL_ENABLED=false`.
+6. **Correo opcional.** Verificado: con `APP_EMAIL_ENABLED=false`, la
+   configuración arranca sin credenciales SMTP y usa un adaptador que no intenta
+   enviar correo.
 7. **Base local con Docker.** Añadir PostgreSQL 17 a Docker Compose, con
    almacenamiento persistente y comprobación de disponibilidad.
 8. **Pruebas de base de datos.** Probar el esquema y las operaciones de

@@ -119,7 +119,7 @@ PUT    /api/users/{id}
 DELETE /api/users/{id}
 ```
 
-Con `APP_EMAIL_ENABLED=false`, crear y actualizar usuarios no intentan conectarse a SMTP. Para activar correo real, define `APP_EMAIL_ENABLED=true` y las variables `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_ADDRESS` y `SMTP_FROM_NAME`.
+Con `APP_EMAIL_ENABLED=false` (valor predeterminado), crear y actualizar usuarios no intentan conectarse a SMTP y no requieren credenciales de correo. Para activar correo real, define `APP_EMAIL_ENABLED=true` y las variables `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_ADDRESS` y `SMTP_FROM_NAME`.
 
 ## Despliegue en Render
 
