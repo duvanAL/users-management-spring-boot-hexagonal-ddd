@@ -104,6 +104,7 @@ del SQL no elimina una cuenta previamente creada ni cambia sus credenciales.
 Con Docker Desktop iniciado, levantar PostgreSQL 17:
 
 ```powershell
+Copy-Item .env.example .env
 docker compose up -d db
 docker compose ps
 ```
@@ -114,6 +115,11 @@ contraseña son solo para desarrollo local; se pueden cambiar con las variables
 `POSTGRES_USER`, `POSTGRES_PASSWORD` y `POSTGRES_DB`. No reutilizarlos en Render.
 La base se publica únicamente en `localhost:5435` por defecto; cambiar ese puerto
 con `DB_LOCAL_PORT` si ya está ocupado.
+
+`.env.example` contiene únicamente valores locales de muestra. El archivo `.env`
+no se incluye en Git ni en la imagen Docker. Compose lo lee para configurar la
+base; para arrancar la aplicación directamente en PowerShell, también hay que
+definir en esa terminal las variables `DB_*` de conexión.
 
 Para conectar la aplicación ejecutada en el equipo, usar `DB_HOST=localhost`,
 `DB_PORT=5435`, `DB_NAME=crud_usuarios`, `DB_USERNAME=postgres` y

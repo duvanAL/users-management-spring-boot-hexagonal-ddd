@@ -92,8 +92,9 @@ guía; las partes ya implementadas se revisarán y completarán según lo necesa
 11. **Imagen Docker.** Completado: la imagen multi-etapa se construyó y arrancó
     conectada a PostgreSQL local; `/actuator/health`, su componente `db` y
     `/health` respondieron `UP`. El proceso del contenedor corre como `app:app`.
-12. **Archivos de entorno.** Completar `.dockerignore` y `.env.example`, usando
-    valores de ejemplo y sin guardar contraseñas reales.
+12. **Archivos de entorno.** Completado: `.env.example` usa solo credenciales
+    locales de muestra; `.env` queda excluido de Git y Docker junto con archivos
+    de claves habituales.
 13. **Pruebas automáticas en GitHub.** Adaptar el workflow de Maven a `develop`
     y `deploy/render`, incluyendo las pruebas de integración.
 14. **Verificación de Docker en GitHub.** Comprobar la construcción y el
