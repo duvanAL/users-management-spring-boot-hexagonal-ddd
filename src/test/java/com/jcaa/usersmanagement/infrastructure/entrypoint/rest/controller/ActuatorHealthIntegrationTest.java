@@ -37,16 +37,16 @@ class ActuatorHealthIntegrationTest {
 
   @DynamicPropertySource
   static void databaseProperties(final DynamicPropertyRegistry registry) {
-    registry.add("DB_HOST", POSTGRES::getHost);
-    registry.add("DB_PORT", POSTGRES::getFirstMappedPort);
-    registry.add("DB_NAME", POSTGRES::getDatabaseName);
-    registry.add("DB_USERNAME", POSTGRES::getUsername);
-    registry.add("DB_PASSWORD", POSTGRES::getPassword);
-    registry.add("DB_SSLMODE", () -> "disable");
+    registry.add("db.host", POSTGRES::getHost);
+    registry.add("db.port", POSTGRES::getFirstMappedPort);
+    registry.add("db.name", POSTGRES::getDatabaseName);
+    registry.add("db.username", POSTGRES::getUsername);
+    registry.add("db.password", POSTGRES::getPassword);
+    registry.add("db.sslmode", () -> "disable");
     registry.add("db.pool.maximum-size", () -> "5");
     registry.add("db.pool.minimum-idle", () -> "1");
     registry.add("db.pool.connection-timeout-ms", () -> "30000");
-    registry.add("APP_EMAIL_ENABLED", () -> "false");
+    registry.add("app.email.enabled", () -> "false");
   }
 
   @Test
