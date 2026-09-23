@@ -168,8 +168,10 @@ Health Check Path: /actuator/health
 
 El workflow `CI` se ejecuta en los pushes y pull requests de `develop` y
 `deploy/render`. Configura Java 17, ejecuta `./mvnw -B clean verify` (incluidas
-las pruebas PostgreSQL con Testcontainers) y publica el reporte JaCoCo. La
-verificación de la imagen Docker se añadirá en el siguiente paso.
+las pruebas PostgreSQL con Testcontainers) y publica el reporte JaCoCo. Si las
+pruebas pasan, construye la imagen Docker, la ejecuta junto a un PostgreSQL
+temporal y comprueba `/actuator/health`. Esta verificación no publica la imagen
+en un registro.
 
 El workflow heredado `Deploy to Render` todavía escucha `main` y usa un Deploy
 Hook. No forma parte del nuevo flujo por ramas; se adaptará en el paso 15.

@@ -98,8 +98,9 @@ guía; las partes ya implementadas se revisarán y completarán según lo necesa
 13. **Pruebas automáticas en GitHub.** Completado: el workflow Maven se ejecuta
     en push y pull request dirigidos a `develop` o `deploy/render`; `clean verify`
     incluye las pruebas con Testcontainers en el runner Ubuntu.
-14. **Verificación de Docker en GitHub.** Comprobar la construcción y el
-    funcionamiento del contenedor dentro de CI.
+14. **Verificación de Docker en GitHub.** Completado: después de las pruebas,
+    CI construye la imagen, la ejecuta junto a un PostgreSQL temporal y valida
+    `/actuator/health`. La imagen no se publica en un registro.
 15. **Despliegue en Render.** Crear `deploy/render` y completar `render.yaml`
     con el servicio web, PostgreSQL 17, variables y comprobación de salud.
     Coordinar el despliegue automático con CI y retirar el hook anterior
