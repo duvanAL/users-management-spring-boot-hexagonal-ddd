@@ -11,10 +11,10 @@ explica las ramas, el estado inicial del proyecto y los pasos para publicarlo
 en Render.
 
 `main` conserva el estado existente del fork. La rama `deploy/render` se creara
-desde `develop` en el punto 15, antes de conectar el despliegue. Las secciones de
-despliegue y CI/CD de este README describen la configuracion heredada: actualmente
-usa `main` y un Deploy Hook; su adaptacion a `deploy/render` y auto-deploy esta
-pendiente. La presencia de esos archivos no confirma un servicio desplegado.
+desde `develop` en el punto 15, antes de conectar el despliegue. El workflow Maven
+CI ya valida cambios en `develop` y `deploy/render`; el workflow heredado de
+Render todavía apunta a `main` y usa un Deploy Hook, y se adaptará en el punto 15.
+La presencia de esos archivos no confirma un servicio desplegado.
 
 ## Fork y remotos
 
@@ -166,12 +166,12 @@ Health Check Path: /actuator/health
 
 ## CI/CD con GitHub Actions y Render
 
-El workflow `CI` se ejecuta en cada pull request y en cada push a `main`. Ejecuta todas las pruebas, genera el reporte JaCoCo y construye la imagen Docker.
+El workflow `CI` se ejecuta en los pushes y pull requests de `develop` y
+`deploy/render`. Configura Java 17, ejecuta `./mvnw -B clean verify` (incluidas
+las pruebas PostgreSQL con Testcontainers) y publica el reporte JaCoCo. La
+verificación de la imagen Docker se añadirá en el siguiente paso.
 
-El workflow `Deploy to Render` se ejecuta solamente despues de un CI exitoso en `main`. Para activarlo:
-
-1. En Render crea el Web Service desde `render.yaml` y genera un **Deploy Hook**.
-2. En GitHub abre `Settings > Secrets and variables > Actions > New repository secret`.
-3. Crea el secreto `RENDER_DEPLOY_HOOK_URL` con la URL del Deploy Hook de Render.
-
-El hook no se guarda en el repositorio. Las credenciales PostgreSQL siguen configurandose exclusivamente como variables secretas del servicio en Render.
+El workflow heredado `Deploy to Render` todavía escucha `main` y usa un Deploy
+Hook. No forma parte del nuevo flujo por ramas; se adaptará en el paso 15.
+Hasta entonces, la presencia de este workflow no significa que exista una
+aplicación publicada en Render.

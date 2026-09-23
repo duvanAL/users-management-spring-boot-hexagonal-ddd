@@ -95,8 +95,9 @@ guía; las partes ya implementadas se revisarán y completarán según lo necesa
 12. **Archivos de entorno.** Completado: `.env.example` usa solo credenciales
     locales de muestra; `.env` queda excluido de Git y Docker junto con archivos
     de claves habituales.
-13. **Pruebas automáticas en GitHub.** Adaptar el workflow de Maven a `develop`
-    y `deploy/render`, incluyendo las pruebas de integración.
+13. **Pruebas automáticas en GitHub.** Completado: el workflow Maven se ejecuta
+    en push y pull request dirigidos a `develop` o `deploy/render`; `clean verify`
+    incluye las pruebas con Testcontainers en el runner Ubuntu.
 14. **Verificación de Docker en GitHub.** Comprobar la construcción y el
     funcionamiento del contenedor dentro de CI.
 15. **Despliegue en Render.** Crear `deploy/render` y completar `render.yaml`
