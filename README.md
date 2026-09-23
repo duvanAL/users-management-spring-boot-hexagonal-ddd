@@ -164,10 +164,13 @@ El endpoint [`/actuator/health`](https://users-management-api-a4yf.onrender.com/
 comprueba la aplicación y PostgreSQL sin exponer detalles. El último despliegue
 respondió `UP` tanto en `status` como en `components.db.status`.
 
-La configuración inicial usa planes gratuitos para probar. El servicio web
-puede suspenderse tras un periodo sin tráfico y la base de datos gratuita tiene
-un plazo de disponibilidad limitado. No usar para datos importantes: antes del
-vencimiento hay que respaldar o migrar la información y elegir un plan adecuado.
+La configuración inicial usa planes gratuitos solo para pruebas; no es adecuada
+para producción. Render suspende el servicio web tras 15 minutos sin tráfico y
+despertarlo puede tardar alrededor de un minuto. La base gratuita tiene 1 GB,
+vence a los 30 días, no incluye copias de seguridad y, después de vencer, solo
+se puede actualizar durante un periodo de gracia de 14 días antes de que Render
+la elimine. Respalda o migra los datos y elige un plan apropiado antes del
+vencimiento. Consulta los [límites actuales del plan gratuito de Render](https://render.com/docs/free).
 
 Si configuras el servicio manualmente en lugar de usar el Blueprint, usa:
 
@@ -199,6 +202,7 @@ construye la versión fusionada y la activa cuando su comprobación
 
 Al terminar, revisar el despliegue en el dashboard de Render y comprobar
 [`/actuator/health`](https://users-management-api-a4yf.onrender.com/actuator/health).
-El workflow heredado `Deploy to Render` aún existe en `main`; no interviene en
-este procedimiento y queda pendiente retirarlo de esa rama en una tarea
-separada.
+El workflow heredado que llamaba al Deploy Hook se eliminó de `main` en el
+commit `8b57d40`. La configuración de despliegue automático está preparada;
+falta confirmar el ciclo completo en la primera fusión de promoción desde
+`develop` a `deploy/render`.

@@ -114,8 +114,11 @@ guía; las partes ya implementadas se revisarán y completarán según lo necesa
 17. **Prueba del servicio publicado.** Completada: `/actuator/health` y el
     componente PostgreSQL respondieron `UP`. Una búsqueda de un UUID aleatorio
     inexistente en `GET /api/users/{id}` devolvió `404`, sin modificar datos.
-18. **Documentación de cierre.** Registrar la URL, los resultados de las pruebas
-    y el mantenimiento necesario para el plan gratuito.
+18. **Documentación de cierre.** Completada: README registra la URL pública,
+    los resultados de salud y consulta, las limitaciones vigentes del plan
+    gratuito y el retiro del Deploy Hook heredado de `main` (commit `8b57d40`).
+    Queda pendiente confirmar el despliegue automático con una promoción real
+    de `develop` a `deploy/render`.
 
 ## Compilación y pruebas
 
