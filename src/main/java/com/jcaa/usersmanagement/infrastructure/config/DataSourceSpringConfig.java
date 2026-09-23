@@ -40,17 +40,41 @@ public class DataSourceSpringConfig {
   @Value(PROP_DB_SSLMODE)
   private String dbSslMode;
 
+  @Value("${db.pool.maximum-size}")
+  private int maximumPoolSize;
+
+  @Value("${db.pool.minimum-idle}")
+  private int minimumIdle;
+
+  @Value("${db.pool.connection-timeout-ms}")
+  private long connectionTimeoutMs;
+
+  private static final long MIN_CONNECTION_TIMEOUT_MS = 250;
+  private static final String PROP_MAX_POOL = "DB_POOL_MAX_SIZE";
+  private static final String PROP_MIN_IDLE = "DB_POOL_MIN_IDLE";
+  private static final String PROP_TIMEOUT = "DB_CONNECTION_TIMEOUT_MS";
+
   @Bean
   public DataSource dataSource() {
     final DatabaseConfig config = new DatabaseConfig(dbHost, dbPort, dbName, dbUsername, dbPassword, dbSslMode);
+
+    if (maximumPoolSize < 1) {
+      throw ConfigurationException.becauseInvalidProperty(PROP_MAX_POOL);
+    }
+    if (minimumIdle < 0 || minimumIdle > maximumPoolSize) {
+      throw ConfigurationException.becauseInvalidProperty(PROP_MIN_IDLE);
+    }
+    if (connectionTimeoutMs < MIN_CONNECTION_TIMEOUT_MS) {
+      throw ConfigurationException.becauseInvalidProperty(PROP_TIMEOUT);
+    }
 
     final HikariConfig hikariConfig = new HikariConfig();
     hikariConfig.setJdbcUrl(config.buildJdbcUrl());
     hikariConfig.setUsername(config.username());
     hikariConfig.setPassword(config.password());
-    hikariConfig.setMaximumPoolSize(10);
-    hikariConfig.setMinimumIdle(2);
-    hikariConfig.setConnectionTimeout(30_000);
+    hikariConfig.setMaximumPoolSize(maximumPoolSize);
+    hikariConfig.setMinimumIdle(minimumIdle);
+    hikariConfig.setConnectionTimeout(connectionTimeoutMs);
 
     log.info(LOG_DATASOURCE_INIT, dbHost, dbPort);
     return new HikariDataSource(hikariConfig);

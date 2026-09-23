@@ -41,6 +41,24 @@ $env:APP_EMAIL_ENABLED = "false"
 
 `DB_SSLMODE` acepta los modos soportados por el driver PostgreSQL, por ejemplo `disable`, `prefer`, `require`, `verify-ca` o `verify-full`.
 
+Para desarrollo local, los valores predeterminados son `localhost:5432`, base
+`crud_usuarios`, usuario `postgres` y `DB_SSLMODE=disable`. `DB_PASSWORD` debe
+definirse: la aplicación rechaza valores vacíos antes de abrir conexiones.
+En conexiones remotas, indicar el modo SSL que requiera el proveedor.
+
+La API permite ajustar el pool de conexiones mediante estas variables:
+
+- `DB_POOL_MAX_SIZE`: máximo de conexiones; por defecto `5`, mínimo `1`.
+- `DB_POOL_MIN_IDLE`: conexiones libres que se mantienen preparadas; por defecto
+  `1`, entre `0` y el máximo configurado.
+- `DB_CONNECTION_TIMEOUT_MS`: espera máxima para obtener una conexión del pool;
+  por defecto `30000` milisegundos, mínimo `250`.
+
+El puerto debe estar entre `1` y `65535`. Host, base, usuario y contraseña no
+pueden estar vacíos. Los errores de validación identifican la variable que debe
+corregirse sin incluir su valor. Las credenciales se pasan por separado al
+driver y no forman parte de la URL JDBC.
+
 Crear la base de datos y aplicar el esquema, usando `psql` o la herramienta del proveedor:
 
 ```sql
