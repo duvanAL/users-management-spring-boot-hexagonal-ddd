@@ -4,21 +4,42 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
+    branch: deploy/render
+    region: virginia
     plan: free
-    autoDeployTrigger: "off"
+    autoDeployTrigger: checksPass
     healthCheckPath: /actuator/health
     envVars:
       - key: DB_HOST
-        sync: false
+        fromDatabase:
+          name: users-management-db
+          property: host
       - key: DB_PORT
-        value: "5432"
+        fromDatabase:
+          name: users-management-db
+          property: port
       - key: DB_NAME
-        sync: false
+        fromDatabase:
+          name: users-management-db
+          property: database
       - key: DB_USERNAME
-        sync: false
+        fromDatabase:
+          name: users-management-db
+          property: user
       - key: DB_PASSWORD
-        sync: false
+        fromDatabase:
+          name: users-management-db
+          property: password
       - key: DB_SSLMODE
         value: require
       - key: APP_EMAIL_ENABLED
         value: "false"
+
+databases:
+  - name: users-management-db
+    databaseName: crud_usuarios
+    user: users_management
+    plan: free
+    region: virginia
+    postgresMajorVersion: "17"
+    ipAllowList: []
