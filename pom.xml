@@ -20,7 +20,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <!-- Versiones de dependencias no gestionadas por el BOM de Spring Boot -->
     <lombok.version>1.18.36</lombok.version>
-    <postgresql.version>42.7.4</postgresql.version>
+    <postgresql.version>42.7.13</postgresql.version>
     <javamail.version>1.6.2</javamail.version>
     <bcrypt.version>0.10.2</bcrypt.version>
     <!-- Declarativas: Mockito y Jacoco siguen siendo explícitas para tener control -->
@@ -65,11 +65,12 @@
       <scope>provided</scope>
     </dependency>
 
-    <!-- PostgreSQL JDBC driver -->
+    <!-- Driver PostgreSQL disponible en ejecucion; el codigo compila contra JDBC -->
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
       <version>${postgresql.version}</version>
+      <scope>runtime</scope>
     </dependency>
 
     <!-- JavaMail API (javax.mail legacy — NO migrado a jakarta.mail, intencional) -->
