@@ -111,9 +111,9 @@ guía; las partes ya implementadas se revisarán y completarán según lo necesa
 16. **Guía de publicación.** Completada: README documenta el flujo de trabajo
     desde `develop`, la revisión de CI, la fusión a `deploy/render` y la
     comprobación del despliegue.
-17. **Prueba del servicio publicado.** Parcial: `/actuator/health` y el
-    componente PostgreSQL respondieron `UP`. Falta probar una operación de la
-    API que lea o escriba datos.
+17. **Prueba del servicio publicado.** Completada: `/actuator/health` y el
+    componente PostgreSQL respondieron `UP`. Una búsqueda de un UUID aleatorio
+    inexistente en `GET /api/users/{id}` devolvió `404`, sin modificar datos.
 18. **Documentación de cierre.** Registrar la URL, los resultados de las pruebas
     y el mantenimiento necesario para el plan gratuito.
 
