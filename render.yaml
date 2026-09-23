@@ -6,7 +6,7 @@ services:
     dockerContext: .
     plan: free
     autoDeployTrigger: "off"
-    healthCheckPath: /health
+    healthCheckPath: /actuator/health
     envVars:
       - key: DB_HOST
         sync: false

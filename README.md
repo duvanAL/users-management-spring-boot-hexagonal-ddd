@@ -146,7 +146,7 @@ Con `APP_EMAIL_ENABLED=false` (valor predeterminado), crear y actualizar usuario
 
 ## Despliegue en Render
 
-El repositorio incluye `Dockerfile` y `render.yaml`. En Render puedes crear el servicio desde **New + > Blueprint** y seleccionar este repositorio. El servicio usa Java 17 dentro de Docker, toma el puerto asignado por Render mediante `PORT` y expone `/health` como comprobacion de salud.
+El repositorio incluye `Dockerfile` y `render.yaml`. En Render puedes crear el servicio desde **New + > Blueprint** y seleccionar este repositorio. El servicio usa Java 17 dentro de Docker, toma el puerto asignado por Render mediante `PORT` y usa `/actuator/health` como comprobación de salud; este endpoint también comprueba PostgreSQL y no expone detalles.
 
 En la configuracion del servicio define los valores reales de `DB_HOST`, `DB_NAME`, `DB_USERNAME` y `DB_PASSWORD`. `render.yaml` deja esas variables como secretas y establece `DB_SSLMODE=require` para PostgreSQL remoto. La base PostgreSQL debe existir antes del primer despliegue; la API aplica `schema.sql` automáticamente al arrancar.
 
@@ -155,7 +155,7 @@ Si configuras el servicio manualmente en lugar de usar el Blueprint, usa:
 ```text
 Build Command: docker build -t users-management-api .
 Start Command: definido por el Dockerfile
-Health Check Path: /health
+Health Check Path: /actuator/health
 ```
 
 ## CI/CD con GitHub Actions y Render

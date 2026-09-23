@@ -86,8 +86,9 @@ guía; las partes ya implementadas se revisarán y completarán según lo necesa
 9. **Pruebas de la API.** Implementadas con MockMvc: rutas principales,
    validación de solicitudes y respuestas `404`, `409`, `401` y `500`; también
    se verifica que no se expongan contraseñas ni detalles de persistencia.
-10. **Estado de la aplicación.** Añadir `/actuator/health` para comprobar también
-    la conexión a la base. El `/health` actual solo devuelve `UP`.
+10. **Estado de la aplicación.** Añadido `/actuator/health`: informa el estado
+    de PostgreSQL, limita la exposición a salud y oculta detalles. Render lo usa
+    como comprobación; `/health` se conserva por compatibilidad.
 11. **Imagen Docker.** Revisar el Dockerfile existente y comprobar que la
     aplicación arranca con la configuración de despliegue.
 12. **Archivos de entorno.** Completar `.dockerignore` y `.env.example`, usando

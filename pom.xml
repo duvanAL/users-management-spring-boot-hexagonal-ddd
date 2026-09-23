@@ -46,6 +46,12 @@
       <artifactId>spring-boot-starter-jdbc</artifactId>
     </dependency>
 
+    <!-- Endpoint operativo de salud para el despliegue -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+
     <!-- Validation: jakarta.validation-api + hibernate-validator
          En Spring Boot 3.x este starter se separó de spring-boot-starter-web -->
     <dependency>
