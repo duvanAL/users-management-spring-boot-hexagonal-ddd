@@ -3,6 +3,19 @@
 Aplicacion REST de gestion de usuarios basada en arquitectura hexagonal y DDD.
 Este fork esta preparado para `duvanAL/users-management-spring-boot-hexagonal-ddd` y PostgreSQL remoto.
 
+## Desarrollo incremental
+
+Los cambios se desarrollan y prueban en `develop`, organizados en commits
+pequenos. La [Guía de desarrollo y despliegue](docs/flujo-de-trabajo.md)
+explica las ramas, el estado inicial del proyecto y los pasos para publicarlo
+en Render.
+
+`main` conserva el estado existente del fork. La rama `deploy/render` se creara
+desde `develop` en el punto 15, antes de conectar el despliegue. Las secciones de
+despliegue y CI/CD de este README describen la configuracion heredada: actualmente
+usa `main` y un Deploy Hook; su adaptacion a `deploy/render` y auto-deploy esta
+pendiente. La presencia de esos archivos no confirma un servicio desplegado.
+
 ## Fork y remotos
 
 ```powershell
@@ -41,10 +54,12 @@ Luego ejecutar `src/main/resources/schema.sql` conectado a `crud_usuarios`. El s
 
 ## Arranque y smoke test
 
-Requiere JDK 21. En PowerShell:
+El proyecto compila para Java 17 y su Dockerfile usa Java 17. Para ejecutar las
+verificaciones locales con el JDK 21 instalado en este equipo, en PowerShell:
 
 ```powershell
 $env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-21.0.8.9-hotspot"
+$env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
 & .\mvnw.cmd spring-boot:run
 ```
 
