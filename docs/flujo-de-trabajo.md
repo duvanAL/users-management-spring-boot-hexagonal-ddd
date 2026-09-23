@@ -76,8 +76,10 @@ guía; las partes ya implementadas se revisarán y completarán según lo necesa
 6. **Correo opcional.** Verificado: con `APP_EMAIL_ENABLED=false`, la
    configuración arranca sin credenciales SMTP y usa un adaptador que no intenta
    enviar correo.
-7. **Base local con Docker.** Añadir PostgreSQL 17 a Docker Compose, con
-   almacenamiento persistente y comprobación de disponibilidad.
+7. **Base local con Docker.** Completado: `compose.yaml` ejecuta PostgreSQL 17
+   con volumen persistente, publica en `localhost:5435` (el `5432` ya lo usa el
+   PostgreSQL local) y comprueba disponibilidad con `pg_isready`. Se verificó el
+   estado `healthy` y una consulta a `crud_usuarios` dentro del contenedor.
 8. **Pruebas de base de datos.** Probar el esquema y las operaciones de
    persistencia contra PostgreSQL real.
 9. **Pruebas de la API.** Cubrir las operaciones de usuarios, las validaciones

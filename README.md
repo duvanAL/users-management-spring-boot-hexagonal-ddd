@@ -97,6 +97,27 @@ desactivar `SEED_ADMIN_ENABLED` y retirar las variables del correo y contraseña
 Las cuentas creadas antes de este cambio se conservan. Retirar el usuario fijo
 del SQL no elimina una cuenta previamente creada ni cambia sus credenciales.
 
+### PostgreSQL local con Docker Compose
+
+Con Docker Desktop iniciado, levantar PostgreSQL 17:
+
+```powershell
+docker compose up -d db
+docker compose ps
+```
+
+Compose conserva los datos en el volumen `postgres_data` y espera a que
+PostgreSQL responda a `pg_isready`. Los valores predeterminados de usuario y
+contraseña son solo para desarrollo local; se pueden cambiar con las variables
+`POSTGRES_USER`, `POSTGRES_PASSWORD` y `POSTGRES_DB`. No reutilizarlos en Render.
+La base se publica únicamente en `localhost:5435` por defecto; cambiar ese puerto
+con `DB_LOCAL_PORT` si ya está ocupado.
+
+Para conectar la aplicación ejecutada en el equipo, usar `DB_HOST=localhost`,
+`DB_PORT=5435`, `DB_NAME=crud_usuarios`, `DB_USERNAME=postgres` y
+`DB_PASSWORD=local_only_change_me`, o los valores personalizados elegidos.
+Detener el contenedor con `docker compose down`; este comando conserva los datos.
+
 ## Arranque y smoke test
 
 El proyecto compila para Java 17 y su Dockerfile usa Java 17. Para ejecutar las
