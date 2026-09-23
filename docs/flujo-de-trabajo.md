@@ -89,8 +89,9 @@ guía; las partes ya implementadas se revisarán y completarán según lo necesa
 10. **Estado de la aplicación.** Añadido `/actuator/health`: informa el estado
     de PostgreSQL, limita la exposición a salud y oculta detalles. Render lo usa
     como comprobación; `/health` se conserva por compatibilidad.
-11. **Imagen Docker.** Revisar el Dockerfile existente y comprobar que la
-    aplicación arranca con la configuración de despliegue.
+11. **Imagen Docker.** Completado: la imagen multi-etapa se construyó y arrancó
+    conectada a PostgreSQL local; `/actuator/health`, su componente `db` y
+    `/health` respondieron `UP`. El proceso del contenedor corre como `app:app`.
 12. **Archivos de entorno.** Completar `.dockerignore` y `.env.example`, usando
     valores de ejemplo y sin guardar contraseñas reales.
 13. **Pruebas automáticas en GitHub.** Adaptar el workflow de Maven a `develop`
