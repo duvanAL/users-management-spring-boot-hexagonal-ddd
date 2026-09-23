@@ -135,5 +135,6 @@ Queda por verificar la ejecución con Java 17 y PostgreSQL real, ya que las
 pruebas actuales de persistencia simulan las conexiones JDBC.
 
 La base remota y el servicio en Render se comprobarán durante el despliegue.
-Antes de esa etapa debe retirarse el administrador con contraseña fija que
-todavía contiene el esquema SQL.
+El esquema deja la base nueva sin usuarios. Si se necesita una cuenta inicial,
+se habilita el seed opcional con credenciales configuradas como secretos; no se
+incluyen contraseñas fijas en el repositorio.

@@ -70,15 +70,32 @@ configurada. No es necesario ejecutar el archivo a mano. La base debe existir
 y el usuario de conexión debe tener permisos para crear tablas e insertar datos.
 Si falta el archivo o falla una sentencia SQL, la aplicación no termina de arrancar.
 
-El script crea la tabla solo si no existe. En los reinicios conserva los datos
-y evita volver a insertar el administrador con el mismo identificador. No modifica
-tablas existentes: los cambios futuros de columnas requerirán migraciones.
+El script crea la tabla solo si no existe. En los reinicios conserva los datos.
+No modifica tablas existentes: los cambios futuros de columnas requerirán
+migraciones.
 
-Por ahora, el script también crea el administrador inicial; su reemplazo por una
-creación opcional mediante variables corresponde al siguiente paso:
+### Administrador inicial
 
-- Usuario: `admin@example.com`
-- Contraseña: `Admin1234!`
+La base nueva comienza sin usuarios. Para crear el primer administrador al
+arrancar, configurar estas variables en la terminal o como secretos en Render:
+
+- `SEED_ADMIN_ENABLED=true`: habilita la creación; por defecto es `false`.
+- `SEED_ADMIN_EMAIL`: correo válido, con un máximo de 150 caracteres.
+- `SEED_ADMIN_PASSWORD`: contraseña de al menos 8 caracteres y hasta 72 bytes
+  en UTF-8, después de quitar espacios de los extremos, como en el login.
+
+La creación se ejecuta después del esquema. Guarda un UUID nuevo, el nombre
+`Administrador`, rol `ADMIN`, estado `ACTIVE` y un hash BCrypt con coste 12.
+Si las credenciales no son válidas, el arranque falla sin mostrar sus valores.
+Con la opción desactivada no se requieren ni se validan esas credenciales.
+
+Si ya existe el mismo correo normalizado, no se modifica la cuenta: se conservan
+su contraseña, rol y estado. Esta opción no restablece contraseñas ni convierte
+usuarios existentes en administradores. Después del primer arranque, se puede
+desactivar `SEED_ADMIN_ENABLED` y retirar las variables del correo y contraseña.
+
+Las cuentas creadas antes de este cambio se conservan. Retirar el usuario fijo
+del SQL no elimina una cuenta previamente creada ni cambia sus credenciales.
 
 ## Arranque y smoke test
 

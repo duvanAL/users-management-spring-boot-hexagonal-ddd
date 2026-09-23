@@ -2,7 +2,8 @@
 -- Esquema PostgreSQL para la base de datos crud_usuarios.
 -- Crear la base previamente (por ejemplo: CREATE DATABASE crud_usuarios).
 -- Spring ejecuta este archivo al iniciar la API; tambien puede aplicarse con psql.
--- IF NOT EXISTS conserva las tablas y ON CONFLICT evita repetir el usuario inicial.
+-- IF NOT EXISTS conserva las tablas. La creacion del administrador es opcional
+-- y se configura por variables de entorno, fuera del esquema.
 -- Este script no migra estructuras anteriores: futuros cambios de columnas
 -- requieren una migracion explicita, no basta con editar CREATE TABLE.
 -- =============================================
@@ -18,16 +19,3 @@ CREATE TABLE IF NOT EXISTS users (
     created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
--- Usuario administrador inicial (password: Admin1234!)
-INSERT INTO users (id, name, email, password, role, status)
-VALUES (
-    '00000000-0000-0000-0000-000000000001',
-    'Administrador',
-    'admin@example.com',
-    '$2a$12$JEjeZBiz/ZkZOKagPJrutespQSn2rMVZ8KZzE.mlYnFfZdsyJAHau',
-    'ADMIN',
-    'ACTIVE'
-)
-ON CONFLICT (id) DO NOTHING;
-
