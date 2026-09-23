@@ -1,7 +1,10 @@
 -- =============================================
 -- Esquema PostgreSQL para la base de datos crud_usuarios.
--- Crear la base previamente (por ejemplo: CREATE DATABASE crud_usuarios)
--- y ejecutar este archivo conectado a esa base.
+-- Crear la base previamente (por ejemplo: CREATE DATABASE crud_usuarios).
+-- Spring ejecuta este archivo al iniciar la API; tambien puede aplicarse con psql.
+-- IF NOT EXISTS conserva las tablas y ON CONFLICT evita repetir el usuario inicial.
+-- Este script no migra estructuras anteriores: futuros cambios de columnas
+-- requieren una migracion explicita, no basta con editar CREATE TABLE.
 -- =============================================
 
 CREATE TABLE IF NOT EXISTS users (

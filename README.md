@@ -59,13 +59,23 @@ pueden estar vacíos. Los errores de validación identifican la variable que deb
 corregirse sin incluir su valor. Las credenciales se pasan por separado al
 driver y no forman parte de la URL JDBC.
 
-Crear la base de datos y aplicar el esquema, usando `psql` o la herramienta del proveedor:
+Crear la base de datos, usando `psql` o la herramienta del proveedor:
 
 ```sql
 CREATE DATABASE crud_usuarios;
 ```
 
-Luego ejecutar `src/main/resources/schema.sql` conectado a `crud_usuarios`. El script crea la tabla y siembra el administrador inicial:
+Al iniciar la API, Spring ejecuta `src/main/resources/schema.sql` sobre la base
+configurada. No es necesario ejecutar el archivo a mano. La base debe existir
+y el usuario de conexión debe tener permisos para crear tablas e insertar datos.
+Si falta el archivo o falla una sentencia SQL, la aplicación no termina de arrancar.
+
+El script crea la tabla solo si no existe. En los reinicios conserva los datos
+y evita volver a insertar el administrador con el mismo identificador. No modifica
+tablas existentes: los cambios futuros de columnas requerirán migraciones.
+
+Por ahora, el script también crea el administrador inicial; su reemplazo por una
+creación opcional mediante variables corresponde al siguiente paso:
 
 - Usuario: `admin@example.com`
 - Contraseña: `Admin1234!`
@@ -98,7 +108,7 @@ Con `APP_EMAIL_ENABLED=false`, crear y actualizar usuarios no intentan conectars
 
 El repositorio incluye `Dockerfile` y `render.yaml`. En Render puedes crear el servicio desde **New + > Blueprint** y seleccionar este repositorio. El servicio usa Java 17 dentro de Docker, toma el puerto asignado por Render mediante `PORT` y expone `/health` como comprobacion de salud.
 
-En la configuracion del servicio define los valores reales de `DB_HOST`, `DB_NAME`, `DB_USERNAME` y `DB_PASSWORD`. `render.yaml` deja esas variables como secretas y establece `DB_SSLMODE=require` para PostgreSQL remoto. Antes del primer despliegue, ejecuta `src/main/resources/schema.sql` una vez contra la base PostgreSQL remota.
+En la configuracion del servicio define los valores reales de `DB_HOST`, `DB_NAME`, `DB_USERNAME` y `DB_PASSWORD`. `render.yaml` deja esas variables como secretas y establece `DB_SSLMODE=require` para PostgreSQL remoto. La base PostgreSQL debe existir antes del primer despliegue; la API aplica `schema.sql` automáticamente al arrancar.
 
 Si configuras el servicio manualmente en lugar de usar el Blueprint, usa:
 
