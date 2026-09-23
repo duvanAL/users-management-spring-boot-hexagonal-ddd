@@ -6,8 +6,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -29,19 +31,24 @@ import com.jcaa.usersmanagement.domain.valueobject.UserId;
 import com.jcaa.usersmanagement.domain.valueobject.UserName;
 import com.jcaa.usersmanagement.domain.valueobject.UserPassword;
 import com.jcaa.usersmanagement.infrastructure.adapter.persistence.exception.PersistenceException;
-import java.sql.SQLException;
+import com.jcaa.usersmanagement.infrastructure.config.WebCorsConfig;
 import com.jcaa.usersmanagement.infrastructure.entrypoint.rest.advice.GlobalExceptionHandler;
+import java.sql.SQLException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(
     controllers = UserRestController.class,
-    properties = "spring.main.web-application-type=servlet")
-@Import(GlobalExceptionHandler.class)
+    properties = {
+        "spring.main.web-application-type=servlet",
+        "app.cors.allowed-origins=https://users-management-api-docs.vercel.app"
+    })
+@Import({GlobalExceptionHandler.class, WebCorsConfig.class})
 class UserRestControllerTest {
 
   private static final String USER_ID = "a291f5e0-1f17-4dca-b85b-9700a9e94273";
@@ -55,6 +62,17 @@ class UserRestControllerTest {
   @MockBean private GetUserByIdUseCase getUserByIdUseCase;
   @MockBean private GetAllUsersUseCase getAllUsersUseCase;
   @MockBean private LoginUseCase loginUseCase;
+
+  @Test
+  void shouldAllowPreflightRequestsFromTheConfiguredSwaggerSite() throws Exception {
+    // Arrange, Act & Assert
+    mockMvc.perform(options("/api/users")
+            .header(HttpHeaders.ORIGIN, "https://users-management-api-docs.vercel.app")
+            .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST"))
+        .andExpect(status().isOk())
+        .andExpect(header()
+            .string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "https://users-management-api-docs.vercel.app"));
+  }
 
   @Test
   void shouldCreateUserAndReturnCreatedResponseWithoutPassword() throws Exception {

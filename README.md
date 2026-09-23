@@ -155,10 +155,10 @@ Con `APP_EMAIL_ENABLED=false` (valor predeterminado), crear y actualizar usuario
 La rama `deploy/render` contiene el Blueprint `render.yaml`, ya conectado al
 fork. Este creó la API
 [`users-management-api`](https://users-management-api-a4yf.onrender.com) y la base
-PostgreSQL `users-management-db` en Virginia. La API usa Java 17 dentro de
-Docker, toma el puerto asignado por Render mediante `PORT` y aplica `schema.sql`
-al arrancar. Render mantiene las credenciales de la base en variables secretas
-y usa `DB_SSLMODE=require` para la conexión remota.
+PostgreSQL original `users-management-db` en Virginia. La API usa Java 17 dentro
+de Docker, toma el puerto asignado por Render mediante `PORT` y aplica
+`schema.sql` al arrancar. La base de Render se conservará durante el cambio a
+Supabase para permitir una vuelta atrás; no se elimina como parte del despliegue.
 
 El endpoint [`/actuator/health`](https://users-management-api-a4yf.onrender.com/actuator/health)
 comprueba la aplicación y PostgreSQL sin exponer detalles. El último despliegue
@@ -171,6 +171,13 @@ vence a los 30 días, no incluye copias de seguridad y, después de vencer, solo
 se puede actualizar durante un periodo de gracia de 14 días antes de que Render
 la elimine. Respalda o migra los datos y elige un plan apropiado antes del
 vencimiento. Consulta los [límites actuales del plan gratuito de Render](https://render.com/docs/free).
+
+La migración objetivo usa Supabase Free para PostgreSQL y Vercel Hobby para
+publicar solo la página estática de Swagger. La API continúa en Render. Antes de
+activar la migración hay que crear el proyecto de Supabase, cargar sus datos si
+la base actual ya contiene usuarios, configurar las variables secretas en
+Render y validar `/actuator/health`. La guía está en
+[`docs/despliegue-supabase-vercel.md`](docs/despliegue-supabase-vercel.md).
 
 Si configuras el servicio manualmente en lugar de usar el Blueprint, usa:
 
