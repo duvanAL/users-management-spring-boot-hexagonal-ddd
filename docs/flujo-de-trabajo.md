@@ -80,8 +80,9 @@ guía; las partes ya implementadas se revisarán y completarán según lo necesa
    con volumen persistente, publica en `localhost:5435` (el `5432` ya lo usa el
    PostgreSQL local) y comprueba disponibilidad con `pg_isready`. Se verificó el
    estado `healthy` y una consulta a `crud_usuarios` dentro del contenedor.
-8. **Pruebas de base de datos.** Probar el esquema y las operaciones de
-   persistencia contra PostgreSQL real.
+8. **Pruebas de base de datos.** Implementadas con Testcontainers y PostgreSQL
+   17: cargan el esquema real y verifican operaciones del repositorio, claves
+   únicas y conservación de datos al reaplicar el esquema. Requieren Docker.
 9. **Pruebas de la API.** Cubrir las operaciones de usuarios, las validaciones
    y las respuestas de error.
 10. **Estado de la aplicación.** Añadir `/actuator/health` para comprobar también
@@ -132,10 +133,9 @@ Al finalizar, se generan:
 - Resultados de pruebas: `target/surefire-reports`.
 - Reporte de cobertura: `target/site/jacoco/index.html`.
 
-La comprobación inicial terminó correctamente: **194 pruebas, sin fallos,
-errores ni pruebas omitidas**, usando JDK 21.0.8 y compilación para Java 17.
-Queda por verificar la ejecución con Java 17 y PostgreSQL real, ya que las
-pruebas actuales de persistencia simulan las conexiones JDBC.
+La ejecución completa incluye pruebas unitarias y pruebas de integración con
+PostgreSQL 17 mediante Testcontainers; por eso requiere Docker activo. En CI se
+debe habilitar Docker para ejecutar `./mvnw -B clean verify`.
 
 La base remota y el servicio en Render se comprobarán durante el despliegue.
 El esquema deja la base nueva sin usuarios. Si se necesita una cuenta inicial,

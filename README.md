@@ -44,7 +44,9 @@ $env:APP_EMAIL_ENABLED = "false"
 Para desarrollo local, los valores predeterminados son `localhost:5432`, base
 `crud_usuarios`, usuario `postgres` y `DB_SSLMODE=disable`. `DB_PASSWORD` debe
 definirse: la aplicación rechaza valores vacíos antes de abrir conexiones.
-En conexiones remotas, indicar el modo SSL que requiera el proveedor.
+Con Docker Compose, el puerto publicado por defecto es `5435`; definir
+`DB_PORT=5435` al ejecutar la aplicación. En conexiones remotas, indicar el
+modo SSL que requiera el proveedor.
 
 La API permite ajustar el pool de conexiones mediante estas variables:
 
