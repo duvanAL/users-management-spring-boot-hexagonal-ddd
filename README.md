@@ -152,23 +152,25 @@ Con `APP_EMAIL_ENABLED=false` (valor predeterminado), crear y actualizar usuario
 
 ## Despliegue en Render
 
-El repositorio incluye `Dockerfile` y `render.yaml`. Después de publicar la rama
-`deploy/render`, crea un Blueprint en Render y selecciona el repositorio. La
-configuración crea la API y una base PostgreSQL 17 en Virginia; la API obtiene
-los datos de conexión de la base por la red privada. El servicio usa Java 17,
-respeta el puerto `PORT` asignado por Render y comprueba `/actuator/health`, que
-también valida la conexión a PostgreSQL sin exponer detalles.
+La rama `deploy/render` contiene el Blueprint `render.yaml`, ya conectado al
+fork. Este creó la API
+[`users-management-api`](https://users-management-api-a4yf.onrender.com) y la base
+PostgreSQL `users-management-db` en Virginia. La API usa Java 17 dentro de
+Docker, toma el puerto asignado por Render mediante `PORT` y aplica `schema.sql`
+al arrancar. Render mantiene las credenciales de la base en variables secretas
+y usa `DB_SSLMODE=require` para la conexión remota.
 
-La configuración inicial usa planes gratuitos para probar el despliegue. Ten en
-cuenta que el servicio web gratuito se suspende tras 15 minutos sin tráfico y la
-base gratuita caduca a los 30 días. No la uses para datos importantes: antes de
-esa fecha habrá que migrar los datos y pasar a una base de pago, o el servicio
-dejará de tener acceso a la base.
+El endpoint [`/actuator/health`](https://users-management-api-a4yf.onrender.com/actuator/health)
+comprueba la aplicación y PostgreSQL sin exponer detalles. El último despliegue
+respondió `UP` tanto en `status` como en `components.db.status`.
 
-El Blueprint conecta automáticamente `DB_HOST`, `DB_PORT`, `DB_NAME`,
-`DB_USERNAME` y `DB_PASSWORD` con la base que crea. `DB_SSLMODE=require` se usa
-para PostgreSQL remoto y el correo permanece desactivado. La API aplica
-`schema.sql` al arrancar.
+La configuración inicial usa planes gratuitos solo para pruebas; no es adecuada
+para producción. Render suspende el servicio web tras 15 minutos sin tráfico y
+despertarlo puede tardar alrededor de un minuto. La base gratuita tiene 1 GB,
+vence a los 30 días, no incluye copias de seguridad y, después de vencer, solo
+se puede actualizar durante un periodo de gracia de 14 días antes de que Render
+la elimine. Respalda o migra los datos y elige un plan apropiado antes del
+vencimiento. Consulta los [límites actuales del plan gratuito de Render](https://render.com/docs/free).
 
 Si configuras el servicio manualmente en lugar de usar el Blueprint, usa:
 
@@ -185,11 +187,22 @@ El workflow `CI` se ejecuta en los pushes y pull requests de `develop` y
 las pruebas PostgreSQL con Testcontainers) y publica el reporte JaCoCo. Si las
 pruebas pasan, construye la imagen Docker, la ejecuta junto a un PostgreSQL
 temporal y comprueba `/actuator/health`. Esta verificación no publica la imagen
-en un registro. Render está configurado para desplegar `deploy/render` solo
-cuando terminan correctamente las comprobaciones de GitHub.
+en un registro.
 
-El workflow heredado que llamaba al Deploy Hook se quitó de `deploy/render`.
-La versión del workflow que permanece en la rama predeterminada `main` no
-participa en el nuevo flujo; elimínala también de `main` cuando se retire esa
-configuración antigua. La configuración del Blueprint no significa por sí sola
-que la aplicación ya exista en Render: falta crear el Blueprint desde la cuenta.
+Render despliega automáticamente los cambios de `deploy/render` una vez que
+terminan correctamente las comprobaciones de GitHub. Para publicar una versión,
+primero hacer los cambios y sus commits en `develop`, subirlos y esperar a que
+`CI` pase. Después, abrir un pull request desde `develop` hacia `deploy/render`,
+revisar que CI esté aprobado y fusionar el pull request. Usar una fusión que
+conserve los commits individuales (no squash) para mantener el historial de
+trabajo. Antes de fusionar, revisar cualquier diferencia en `render.yaml` y
+conservar la configuración que ya está activa en `deploy/render`. Render
+construye la versión fusionada y la activa cuando su comprobación
+`/actuator/health` es satisfactoria.
+
+Al terminar, revisar el despliegue en el dashboard de Render y comprobar
+[`/actuator/health`](https://users-management-api-a4yf.onrender.com/actuator/health).
+El workflow heredado que llamaba al Deploy Hook se eliminó de `main` en el
+commit `8b57d40`. La configuración de despliegue automático está preparada;
+falta confirmar el ciclo completo en la primera fusión de promoción desde
+`develop` a `deploy/render`.

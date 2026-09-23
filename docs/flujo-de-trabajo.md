@@ -10,8 +10,9 @@ El proyecto parte del [fork de duvanAL](https://github.com/duvanAL/users-managem
 basado en el [repositorio de arrietajohn](https://github.com/arrietajohn/users-management-spring-boot-hexagonal-ddd).
 
 El fork ya incluye PostgreSQL, configuración por variables de entorno, correo
-opcional, un Dockerfile y archivos de CI/CD. Falta completar y probar esas
-piezas, crear la base de datos y conectar el despliegue con las ramas del proyecto.
+opcional, Docker y CI/CD. La API y PostgreSQL se desplegaron en Render desde
+`deploy/render`; quedan por comprobar operaciones de la API y cerrar la guía de
+mantenimiento del servicio.
 
 La revisión del 22 de septiembre de 2026 parte del commit `7068bad` del fork.
 Frente al commit `697af7d` del original, hay siete commits propios y cinco
@@ -22,8 +23,8 @@ y configuración de Spring; su integración queda fuera de esta etapa.
 
 - `main` conserva la versión de partida del fork.
 - `develop` reúne los cambios de desarrollo y sus pruebas.
-- `deploy/render` contendrá la versión publicada en Render. Se creará desde
-  `develop` al llegar al paso 15.
+- `deploy/render` contiene la versión publicada en Render y se actualiza con
+  pull requests desde `develop` después de que CI pase.
 
 Los cambios se preparan en `develop`. Cuando estén probados y listos para
 publicar, se integran en `deploy/render`, conservando los commits individuales.
@@ -33,8 +34,9 @@ cada cambio.
 El remoto `origin` apunta al fork personal y recibe los cambios. El remoto
 `upstream` apunta al proyecto original y permite consultar sus actualizaciones.
 
-La configuración de CI/CD existente todavía usa `main` y un Deploy Hook.
-Hasta adaptarla, los cambios de este trabajo se publican únicamente en `develop`.
+Render observa `deploy/render` y espera a que pasen las comprobaciones de GitHub
+antes de desplegar. Un workflow antiguo que usa `main` y un Deploy Hook aún está
+presente en esa rama; no participa en el flujo actual y se retirará por separado.
 
 ## Cómo guardar cada avance
 
@@ -101,18 +103,22 @@ guía; las partes ya implementadas se revisarán y completarán según lo necesa
 14. **Verificación de Docker en GitHub.** Completado: después de las pruebas,
     CI construye la imagen, la ejecuta junto a un PostgreSQL temporal y valida
     `/actuator/health`. La imagen no se publica en un registro.
-15. **Configuración de Render.** Preparada en `deploy/render`: `render.yaml`
-    define la API y PostgreSQL 17 en la misma región, conecta las variables de
-    forma privada y espera a que pasen los checks de CI antes de desplegar. Se
-    retiró de esta rama el workflow antiguo del Deploy Hook. Falta crear el
-    Blueprint desde la cuenta de Render y retirar el workflow antiguo que aún
-    existe en la rama predeterminada `main`.
-16. **Guía de publicación.** Documentar las variables necesarias y cómo pasar
-    una versión probada de `develop` a `deploy/render`.
-17. **Prueba del servicio publicado.** Comprobar la URL de Render y una operación
-    de la API que utilice la base de datos.
-18. **Documentación de cierre.** Registrar la URL, los resultados de las pruebas
-    y el mantenimiento necesario para el plan gratuito.
+15. **Despliegue en Render.** Completado: `render.yaml` en `deploy/render`
+    define la API y
+    PostgreSQL 17 en Virginia, conecta las variables de forma privada y espera
+    a que pasen los checks de CI. Se creó el Blueprint `users-management-render`
+    desde `deploy/render`; la base está disponible y la API figura Live.
+16. **Guía de publicación.** Completada: README documenta el flujo de trabajo
+    desde `develop`, la revisión de CI, la fusión a `deploy/render` y la
+    comprobación del despliegue.
+17. **Prueba del servicio publicado.** Completada: `/actuator/health` y el
+    componente PostgreSQL respondieron `UP`. Una búsqueda de un UUID aleatorio
+    inexistente en `GET /api/users/{id}` devolvió `404`, sin modificar datos.
+18. **Documentación de cierre.** Completada: README registra la URL pública,
+    los resultados de salud y consulta, las limitaciones vigentes del plan
+    gratuito y el retiro del Deploy Hook heredado de `main` (commit `8b57d40`).
+    Queda pendiente confirmar el despliegue automático con una promoción real
+    de `develop` a `deploy/render`.
 
 ## Compilación y pruebas
 
