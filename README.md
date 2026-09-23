@@ -152,9 +152,23 @@ Con `APP_EMAIL_ENABLED=false` (valor predeterminado), crear y actualizar usuario
 
 ## Despliegue en Render
 
-El repositorio incluye `Dockerfile` y `render.yaml`. En Render puedes crear el servicio desde **New + > Blueprint** y seleccionar este repositorio. El servicio usa Java 17 dentro de Docker, toma el puerto asignado por Render mediante `PORT` y usa `/actuator/health` como comprobación de salud; este endpoint también comprueba PostgreSQL y no expone detalles.
+El repositorio incluye `Dockerfile` y `render.yaml`. Después de publicar la rama
+`deploy/render`, crea un Blueprint en Render y selecciona el repositorio. La
+configuración crea la API y una base PostgreSQL 17 en Virginia; la API obtiene
+los datos de conexión de la base por la red privada. El servicio usa Java 17,
+respeta el puerto `PORT` asignado por Render y comprueba `/actuator/health`, que
+también valida la conexión a PostgreSQL sin exponer detalles.
 
-En la configuracion del servicio define los valores reales de `DB_HOST`, `DB_NAME`, `DB_USERNAME` y `DB_PASSWORD`. `render.yaml` deja esas variables como secretas y establece `DB_SSLMODE=require` para PostgreSQL remoto. La base PostgreSQL debe existir antes del primer despliegue; la API aplica `schema.sql` automáticamente al arrancar.
+La configuración inicial usa planes gratuitos para probar el despliegue. Ten en
+cuenta que el servicio web gratuito se suspende tras 15 minutos sin tráfico y la
+base gratuita caduca a los 30 días. No la uses para datos importantes: antes de
+esa fecha habrá que migrar los datos y pasar a una base de pago, o el servicio
+dejará de tener acceso a la base.
+
+El Blueprint conecta automáticamente `DB_HOST`, `DB_PORT`, `DB_NAME`,
+`DB_USERNAME` y `DB_PASSWORD` con la base que crea. `DB_SSLMODE=require` se usa
+para PostgreSQL remoto y el correo permanece desactivado. La API aplica
+`schema.sql` al arrancar.
 
 Si configuras el servicio manualmente en lugar de usar el Blueprint, usa:
 
@@ -171,9 +185,11 @@ El workflow `CI` se ejecuta en los pushes y pull requests de `develop` y
 las pruebas PostgreSQL con Testcontainers) y publica el reporte JaCoCo. Si las
 pruebas pasan, construye la imagen Docker, la ejecuta junto a un PostgreSQL
 temporal y comprueba `/actuator/health`. Esta verificación no publica la imagen
-en un registro.
+en un registro. Render está configurado para desplegar `deploy/render` solo
+cuando terminan correctamente las comprobaciones de GitHub.
 
-El workflow heredado `Deploy to Render` todavía escucha `main` y usa un Deploy
-Hook. No forma parte del nuevo flujo por ramas; se adaptará en el paso 15.
-Hasta entonces, la presencia de este workflow no significa que exista una
-aplicación publicada en Render.
+El workflow heredado que llamaba al Deploy Hook se quitó de `deploy/render`.
+La versión del workflow que permanece en la rama predeterminada `main` no
+participa en el nuevo flujo; elimínala también de `main` cuando se retire esa
+configuración antigua. La configuración del Blueprint no significa por sí sola
+que la aplicación ya exista en Render: falta crear el Blueprint desde la cuenta.
