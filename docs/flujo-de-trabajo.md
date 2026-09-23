@@ -83,8 +83,9 @@ guía; las partes ya implementadas se revisarán y completarán según lo necesa
 8. **Pruebas de base de datos.** Implementadas con Testcontainers y PostgreSQL
    17: cargan el esquema real y verifican operaciones del repositorio, claves
    únicas y conservación de datos al reaplicar el esquema. Requieren Docker.
-9. **Pruebas de la API.** Cubrir las operaciones de usuarios, las validaciones
-   y las respuestas de error.
+9. **Pruebas de la API.** Implementadas con MockMvc: rutas principales,
+   validación de solicitudes y respuestas `404`, `409`, `401` y `500`; también
+   se verifica que no se expongan contraseñas ni detalles de persistencia.
 10. **Estado de la aplicación.** Añadir `/actuator/health` para comprobar también
     la conexión a la base. El `/health` actual solo devuelve `UP`.
 11. **Imagen Docker.** Revisar el Dockerfile existente y comprobar que la
