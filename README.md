@@ -148,7 +148,9 @@ PUT    /api/users/{id}
 DELETE /api/users/{id}
 ```
 
-Con `APP_EMAIL_ENABLED=false` (valor predeterminado), crear y actualizar usuarios no intentan conectarse a SMTP y no requieren credenciales de correo. Para activar correo real, define `APP_EMAIL_ENABLED=true` y las variables `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_ADDRESS` y `SMTP_FROM_NAME`.
+Con `APP_EMAIL_ENABLED=false` (valor predeterminado), crear y actualizar usuarios no envían correos. Para usar una cuenta Gmail o Google Workspace directamente, selecciona `APP_EMAIL_PROVIDER=smtp` y configura `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=587`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_ADDRESS` y `SMTP_FROM_NAME`. `SMTP_PASSWORD` debe ser una contraseña de aplicación de Google, no la contraseña normal de la cuenta. Activa la verificación en dos pasos para crearla; las cuentas administradas por una institución pueden tener esta función restringida por el administrador. Guarda la contraseña solamente como secreto en Render o en el `.env` local (que no se sube a Git).
+
+El proyecto también incluye la alternativa `APP_EMAIL_PROVIDER=gmail`, que envía mediante Gmail API y requiere `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN` y `GMAIL_SENDER_ADDRESS`. Para el despliegue actual se deja seleccionado SMTP. En ambos modos el correo está desactivado inicialmente y debe habilitarse con `APP_EMAIL_ENABLED=true` solo después de configurar y desplegar las credenciales. Nunca se incluye la contraseña del usuario en el correo de bienvenida.
 
 ## Despliegue en Render
 
