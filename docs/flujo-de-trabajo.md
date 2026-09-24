@@ -76,10 +76,10 @@ guía; las partes ya implementadas se revisarán y completarán según lo necesa
    opcional mediante `SEED_ADMIN_ENABLED`, `SEED_ADMIN_EMAIL` y
    `SEED_ADMIN_PASSWORD`.
 6. **Correo opcional.** Con `APP_EMAIL_ENABLED=false`, no se envían mensajes.
-   Para el despliegue se selecciona `APP_EMAIL_PROVIDER=smtp` con Gmail y una
-   contraseña de aplicación guardada como secreto en Render. La alternativa
-   `gmail` usa Gmail API con OAuth. En ningún caso se versionan credenciales ni
-   se incluye la contraseña del usuario en el correo de bienvenida.
+   El despliegue usa `APP_EMAIL_PROVIDER=gmail` para enviar por Gmail API con
+   OAuth sobre HTTPS; requiere configurar credenciales como secretos en Render.
+   No se usa SMTP ni se versionan credenciales, y nunca se incluye la contraseña
+   del usuario en el correo de bienvenida.
 7. **Base local con Docker.** Completado: `compose.yaml` ejecuta PostgreSQL 17
    con volumen persistente, publica en `localhost:5435` (el `5432` ya lo usa el
    PostgreSQL local) y comprueba disponibilidad con `pg_isready`. Se verificó el
