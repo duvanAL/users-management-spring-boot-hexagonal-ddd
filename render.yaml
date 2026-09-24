@@ -26,6 +26,18 @@ services:
         sync: false
       - key: APP_EMAIL_ENABLED
         value: "false"
+      - key: APP_EMAIL_PROVIDER
+        value: gmail
+      - key: GMAIL_CLIENT_ID
+        sync: false
+      - key: GMAIL_CLIENT_SECRET
+        sync: false
+      - key: GMAIL_REFRESH_TOKEN
+        sync: false
+      - key: GMAIL_SENDER_ADDRESS
+        sync: false
+      - key: GMAIL_SENDER_NAME
+        value: Gestion de Usuarios
 
 databases:
   - name: users-management-db

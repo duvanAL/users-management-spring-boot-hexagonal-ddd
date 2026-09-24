@@ -148,7 +148,11 @@ PUT    /api/users/{id}
 DELETE /api/users/{id}
 ```
 
-Con `APP_EMAIL_ENABLED=false` (valor predeterminado), crear y actualizar usuarios no intentan conectarse a SMTP y no requieren credenciales de correo. Para activar correo real, define `APP_EMAIL_ENABLED=true` y las variables `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_ADDRESS` y `SMTP_FROM_NAME`.
+Con `APP_EMAIL_ENABLED=false` (valor predeterminado), crear y actualizar usuarios no envían correos. Para enviar desde una cuenta Google sin SMTP, activa `APP_EMAIL_ENABLED=true`, usa `APP_EMAIL_PROVIDER=gmail` y configura `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`, `GMAIL_SENDER_ADDRESS` y `GMAIL_SENDER_NAME` como secretos/variables de entorno. La aplicación refresca el token OAuth y envía el mensaje por `users.messages.send` de Gmail API usando únicamente el permiso `gmail.send`; nunca necesita ni almacena la contraseña del buzón.
+
+La Gmail API tiene cuotas gratuitas para uso estándar, y las restricciones de envío propias de Google Workspace siguen aplicando. Google exige consentimiento OAuth. Si el proyecto OAuth queda en estado de prueba, el refresh token puede caducar y será necesario volver a autorizarlo; una aplicación Workspace interna puede evitar parte de esas restricciones si las políticas del administrador lo permiten. No se debe enviar la contraseña del usuario en el correo de bienvenida.
+
+Para obtener estas variables, crea un proyecto en Google Cloud, habilita Gmail API y configura OAuth con el alcance mínimo `https://www.googleapis.com/auth/gmail.send`. Autoriza el buzón de envío y guarda el `client ID`, `client secret` y `refresh token` únicamente en variables privadas de Render. El administrador de Google Workspace puede tener que aprobar el cliente OAuth o permitir el alcance. Un remitente distinto del buzón autorizado debe ser un alias de envío aprobado por Gmail.
 
 ## Despliegue en Render
 
