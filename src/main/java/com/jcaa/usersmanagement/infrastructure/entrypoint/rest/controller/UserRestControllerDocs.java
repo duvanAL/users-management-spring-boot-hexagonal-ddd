@@ -11,9 +11,11 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 
@@ -35,7 +37,8 @@ public interface UserRestControllerDocs {
       description =
           "Registra un nuevo usuario en el sistema. "
               + "El ID debe ser único y el correo no puede estar en uso. "
-              + "Se enviará un correo de bienvenida con las credenciales al registrarlo.")
+              + "El registro público siempre crea un MEMBER; solo un administrador autenticado "
+              + "puede asignar otro rol. Se enviará una notificación de bienvenida.")
   @ApiResponses({
     @ApiResponse(
         responseCode = "201",
@@ -66,7 +69,9 @@ public interface UserRestControllerDocs {
                 mediaType = "application/json",
                 schema = @Schema(implementation = ApiErrorResponse.class)))
   })
-  UserRestResponse create(@Valid @RequestBody CreateUserRestRequest request);
+  UserRestResponse create(
+      @Valid @RequestBody CreateUserRestRequest request,
+      Authentication authentication);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // GET /api/users
@@ -74,7 +79,8 @@ public interface UserRestControllerDocs {
 
   @Operation(
       summary = "Listar todos los usuarios",
-      description = "Retorna la lista completa de usuarios ordenada alfabéticamente por nombre.")
+      description = "Retorna la lista completa de usuarios ordenada alfabéticamente por nombre.",
+      security = @SecurityRequirement(name = "bearerAuth"))
   @ApiResponses({
     @ApiResponse(
         responseCode = "200",
@@ -99,7 +105,8 @@ public interface UserRestControllerDocs {
 
   @Operation(
       summary = "Obtener usuario por ID",
-      description = "Retorna los datos de un usuario específico identificado por su ID único.")
+      description = "Retorna los datos de un usuario específico identificado por su ID único.",
+      security = @SecurityRequirement(name = "bearerAuth"))
   @ApiResponses({
     @ApiResponse(
         responseCode = "200",
@@ -137,7 +144,8 @@ public interface UserRestControllerDocs {
       description =
           "Actualiza los datos de un usuario existente. "
               + "Si se cambia el correo, este no debe estar en uso por otro usuario. "
-              + "Se enviará un correo de notificación de actualización.")
+              + "Se enviará un correo de notificación de actualización.",
+      security = @SecurityRequirement(name = "bearerAuth"))
   @ApiResponses({
     @ApiResponse(
         responseCode = "200",
@@ -187,7 +195,8 @@ public interface UserRestControllerDocs {
 
   @Operation(
       summary = "Eliminar usuario",
-      description = "Elimina permanentemente un usuario del sistema por su ID.")
+      description = "Elimina permanentemente un usuario del sistema por su ID.",
+      security = @SecurityRequirement(name = "bearerAuth"))
   @ApiResponses({
     @ApiResponse(responseCode = "204", description = "Usuario eliminado exitosamente."),
     @ApiResponse(
