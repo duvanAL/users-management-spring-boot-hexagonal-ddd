@@ -91,6 +91,7 @@ jobs:
 
       - name: Run application and check health endpoint
         run: |
+          # Ephemeral signing key used only by this CI smoke-test container.
           docker run --detach \
             --name users-management-api-ci \
             --network users-management-ci \
@@ -102,6 +103,7 @@ jobs:
             --env DB_PASSWORD=ci_test_password \
             --env DB_SSLMODE=disable \
             --env APP_EMAIL_ENABLED=false \
+            --env JWT_SECRET="$(openssl rand -base64 32)" \
             users-management-api:ci
 
           for attempt in $(seq 1 30); do

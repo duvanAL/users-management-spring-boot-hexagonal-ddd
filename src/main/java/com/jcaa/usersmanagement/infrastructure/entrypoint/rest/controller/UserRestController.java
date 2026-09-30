@@ -12,6 +12,7 @@ import com.jcaa.usersmanagement.application.service.dto.command.UpdateUserComman
 import com.jcaa.usersmanagement.application.service.dto.command.LoginCommand;
 import com.jcaa.usersmanagement.application.service.dto.query.GetUserByIdQuery;
 import com.jcaa.usersmanagement.domain.model.UserModel;
+import com.jcaa.usersmanagement.domain.enums.UserRole;
 import com.jcaa.usersmanagement.infrastructure.entrypoint.rest.dto.request.CreateUserRestRequest;
 import com.jcaa.usersmanagement.infrastructure.entrypoint.rest.dto.request.UpdateUserRestRequest;
 import com.jcaa.usersmanagement.infrastructure.entrypoint.rest.dto.request.LoginRestRequest;
@@ -20,6 +21,8 @@ import com.jcaa.usersmanagement.infrastructure.entrypoint.rest.mapper.UserRestMa
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -52,10 +55,28 @@ public class UserRestController implements UserRestControllerDocs {
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
-  public UserRestResponse create(@Valid @RequestBody final CreateUserRestRequest request) {
-    final CreateUserCommand command = UserRestMapper.toCreateCommand(request);
+  public UserRestResponse create(
+      @Valid @RequestBody final CreateUserRestRequest request,
+      final Authentication authentication) {
+    final String assignedRole = resolveAssignedRole(request.role(), authentication);
+    final CreateUserCommand command = UserRestMapper.toCreateCommand(request, assignedRole);
     final UserModel user = createUserUseCase.execute(command);
     return UserRestMapper.toResponse(user);
+  }
+
+  private static boolean isAdministrator(final Authentication authentication) {
+    return authentication != null
+        && authentication.getAuthorities().stream()
+            .map(GrantedAuthority::getAuthority)
+            .anyMatch("ROLE_ADMIN"::equals);
+  }
+
+  private static String resolveAssignedRole(
+      final String requestedRole, final Authentication authentication) {
+    if (isAdministrator(authentication) && requestedRole != null && !requestedRole.isBlank()) {
+      return requestedRole;
+    }
+    return UserRole.MEMBER.name();
   }
 
   @GetMapping

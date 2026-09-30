@@ -15,5 +15,5 @@ public record CreateUserRestRequest(
     @NotBlank(message = "password must not be blank")
         @Size(min = 8, message = "password must have at least 8 characters")
         String password,
-    @NotBlank(message = "role must not be blank") String role) {}
+    String role) {}
 
