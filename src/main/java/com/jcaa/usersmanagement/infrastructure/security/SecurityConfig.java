@@ -19,6 +19,7 @@ public class SecurityConfig {
   private static final String USERS_PATH = "/api/users";
   private static final String USERS_DETAIL_PATH = "/api/users/**";
   private static final String HEALTH_PATH = "/actuator/health";
+  private static final String LEGACY_HEALTH_PATH = "/health";
   private static final String[] OPEN_API_PATHS = {
     "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**"
   };
@@ -47,6 +48,8 @@ public class SecurityConfig {
                     .requestMatchers(HttpMethod.OPTIONS, "/**")
                     .permitAll()
                     .requestMatchers(HEALTH_PATH)
+                    .permitAll()
+                    .requestMatchers(HttpMethod.GET, LEGACY_HEALTH_PATH, "/")
                     .permitAll()
                     .requestMatchers(AUTH_LOGIN_PATH)
                     .permitAll()

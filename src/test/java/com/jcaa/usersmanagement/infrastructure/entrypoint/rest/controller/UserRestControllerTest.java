@@ -53,7 +53,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(
-    controllers = UserRestController.class,
+    controllers = {UserRestController.class, HealthRestController.class},
     properties = {
       "spring.main.web-application-type=servlet",
       "app.cors.allowed-origins=https://users-management-api-docs.vercel.app"
@@ -91,6 +91,14 @@ class UserRestControllerTest {
             .header(HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS, "content-type,authorization"))
         .andExpect(status().isOk())
         .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, SWAGGER_ORIGIN));
+  }
+
+  @Test
+  void shouldKeepLegacyHealthEndpointPublic() throws Exception {
+    // Arrange, Act & Assert
+    mockMvc.perform(get("/health"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("UP"));
   }
 
   @Test
