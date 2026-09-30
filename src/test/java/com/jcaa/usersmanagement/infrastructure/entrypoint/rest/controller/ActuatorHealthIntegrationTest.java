@@ -75,4 +75,25 @@ class ActuatorHealthIntegrationTest {
     assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
     assertThat(objectMapper.readTree(response.getBody()).path("status").asText()).isEqualTo("UP");
   }
+
+  @Test
+  void shouldDocumentBearerAsOptionalForPublicRegistration() throws Exception {
+    // Arrange & Act
+    final ResponseEntity<String> response =
+        restTemplate.getForEntity("http://localhost:" + port + "/v3/api-docs", String.class);
+
+    // Assert
+    assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
+    final JsonNode security =
+        objectMapper
+            .readTree(response.getBody())
+            .path("paths")
+            .path("/api/users")
+            .path("post")
+            .path("security");
+    assertThat(security.isArray()).isTrue();
+    assertThat(security.size()).isEqualTo(2);
+    assertThat(security.get(0).path("bearerAuth").isArray()).isTrue();
+    assertThat(security.get(1).isEmpty()).isTrue();
+  }
 }
