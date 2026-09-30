@@ -34,15 +34,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
       final HttpServletResponse response,
       final FilterChain filterChain)
       throws ServletException, IOException {
-    final String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
-    if (hasBearerToken(authorization)) {
-      authenticate(authorization.substring(BEARER_PREFIX.length()));
+    final String token = extractBearerToken(request.getHeader(HttpHeaders.AUTHORIZATION));
+    if (token != null) {
+      authenticate(token);
     }
     filterChain.doFilter(request, response);
   }
 
-  private static boolean hasBearerToken(final String authorization) {
-    return StringUtils.hasText(authorization) && authorization.startsWith(BEARER_PREFIX);
+  private static String extractBearerToken(final String authorization) {
+    if (!StringUtils.hasText(authorization)) {
+      return null;
+    }
+
+    final String normalizedHeader = authorization.trim();
+    if (!normalizedHeader.regionMatches(
+        true, 0, BEARER_PREFIX, 0, BEARER_PREFIX.length())) {
+      return null;
+    }
+
+    final String token = normalizedHeader.substring(BEARER_PREFIX.length()).trim();
+    return StringUtils.hasText(token) ? token : null;
   }
 
   private void authenticate(final String token) {
