@@ -15,13 +15,14 @@ import java.util.List;
 @UtilityClass
 public class UserRestMapper {
 
-  public CreateUserCommand toCreateCommand(final CreateUserRestRequest request) {
+  public CreateUserCommand toCreateCommand(
+      final CreateUserRestRequest request, final String assignedRole) {
     return new CreateUserCommand(
         request.id(),
         request.name(),
         request.email(),
         request.password(),
-        request.role());
+        assignedRole);
   }
 
   public UpdateUserCommand toUpdateCommand(final String id, final UpdateUserRestRequest request) {

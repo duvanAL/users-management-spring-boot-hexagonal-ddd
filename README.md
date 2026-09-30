@@ -3,18 +3,22 @@
 Aplicacion REST de gestion de usuarios basada en arquitectura hexagonal y DDD.
 Este fork esta preparado para `duvanAL/users-management-spring-boot-hexagonal-ddd` y PostgreSQL remoto.
 
-## Desarrollo incremental
+Este fork incorpora el historial actualizado del repositorio original (`upstream/main`) y conserva las adaptaciones de PostgreSQL, seguridad, Gmail API, Docker y despliegue web.
 
-Los cambios se desarrollan y prueban en `develop`, organizados en commits
-pequenos. La [Guía de desarrollo y despliegue](docs/flujo-de-trabajo.md)
-explica las ramas, el estado inicial del proyecto y los pasos para publicarlo
-en Render.
+## Ramas y actualizacion del repositorio original
 
-`main` conserva el estado existente del fork. La rama `deploy/render` se creara
-desde `develop` en el punto 15, antes de conectar el despliegue. El workflow Maven
-CI ya valida cambios en `develop` y `deploy/render`; el workflow heredado de
-Render todavía apunta a `main` y usa un Deploy Hook, y se adaptará en el punto 15.
-La presencia de esos archivos no confirma un servicio desplegado.
+El remoto `origin` es el fork y `upstream` es el repositorio original
+`arrietajohn/users-management-spring-boot-hexagonal-ddd`. La rama de trabajo
+habitual es `develop`; `deploy/render` se reserva para los cambios que deben
+publicarse en Render. Esta integración se prepara sobre una rama de sincronización
+para conservar el despliegue y actualizar el código desde `upstream/main`.
+
+La integración se valida primero en la rama de sincronización. Después de crear
+su único commit, publícala en el fork y abre una PR hacia `develop`; una vez
+validada, promueve `develop` a `deploy/render` mediante otra PR. No reemplaces
+`deploy/render` directamente con el código original: contiene la configuración
+activa de PostgreSQL, Render y Gmail. La [Guía de desarrollo y despliegue](docs/flujo-de-trabajo.md)
+describe el flujo cotidiano.
 
 ## Fork y remotos
 
@@ -147,6 +151,31 @@ POST   /api/users
 PUT    /api/users/{id}
 DELETE /api/users/{id}
 ```
+
+### Autenticacion y permisos
+
+La API emite JWT mediante `POST /api/auth/login` con correo y contraseña; la
+respuesta incluye el token Bearer. En Swagger UI usa **Authorize** y pega el
+token (sin escribir `Bearer ` si la ventana ya indica ese prefijo). El token
+vence según `JWT_EXPIRATION_SECONDS` (15 minutos por defecto). La clave de firma
+se configura con `JWT_SECRET`; no hay una clave insegura predeterminada. Render
+la genera con el Blueprint y no debe copiarse al repositorio.
+
+El registro público `POST /api/users` siempre crea una cuenta `MEMBER`, aunque
+el cuerpo incluya `"role": "ADMIN"` o cualquier otro rol. Solo una solicitud
+autenticada con rol `ADMIN` puede indicar un rol al crear cuentas. `ADMIN` puede
+listar, consultar, actualizar y eliminar usuarios; `REVIEWER` puede listar y
+consultar; `MEMBER` no puede acceder a esas operaciones. El health check,
+Swagger/OpenAPI, el registro y ambos endpoints de inicio de sesión permanecen
+públicos. El endpoint anterior `POST /api/users/login` se conserva por
+compatibilidad, y el endpoint recomendado para obtener un JWT es
+`POST /api/auth/login`.
+
+Una base recién creada no tiene administrador. Configura temporalmente
+`SEED_ADMIN_ENABLED=true`, `SEED_ADMIN_EMAIL` y `SEED_ADMIN_PASSWORD` como
+variables privadas para arrancar una única cuenta administrativa; tras el
+primer arranque, desactiva el seed y retira el correo y la contraseña. No uses
+credenciales de ejemplo ni envíes secretos en una PR.
 
 Con `APP_EMAIL_ENABLED=false` (valor predeterminado), crear y actualizar usuarios no envían correos. Para enviar directamente desde una cuenta Gmail o Google Workspace se usa Gmail API por HTTPS (`APP_EMAIL_PROVIDER=gmail`), sin SMTP ni contraseña de aplicación. Configura `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN`, `GMAIL_SENDER_ADDRESS` y, opcionalmente, `GMAIL_SENDER_NAME`. En Google Cloud, habilita Gmail API y autoriza el alcance `https://www.googleapis.com/auth/gmail.send`; el refresh token debe pertenecer a la cuenta indicada en `GMAIL_SENDER_ADDRESS`. Guarda estos valores únicamente como secretos en Render o en el `.env` local (que no se sube a Git). En Render el Blueprint deja el envío desactivado hasta que se hayan añadido las credenciales; después de configurarlas, establece `APP_EMAIL_ENABLED=true` y despliega. Nunca se incluye la contraseña del usuario en el correo de bienvenida.
 
