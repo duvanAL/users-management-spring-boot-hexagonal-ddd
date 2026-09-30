@@ -38,11 +38,7 @@ public interface UserRestControllerDocs {
           "Registra un nuevo usuario en el sistema. "
               + "El ID debe ser único y el correo no puede estar en uso. "
               + "El registro público siempre crea un MEMBER; solo un administrador autenticado "
-              + "puede asignar otro rol. Se enviará una notificación de bienvenida.",
-      security = {
-        @SecurityRequirement(name = "bearerAuth"),
-        @SecurityRequirement(name = "")
-      })
+              + "puede asignar otro rol. Se enviará una notificación de bienvenida.")
   @ApiResponses({
     @ApiResponse(
         responseCode = "201",
