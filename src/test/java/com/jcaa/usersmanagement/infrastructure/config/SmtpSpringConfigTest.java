@@ -5,7 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.jcaa.usersmanagement.application.port.out.EmailSenderPort;
 import com.jcaa.usersmanagement.domain.model.EmailDestinationModel;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.BrevoEmailSenderAdapter;
+import com.jcaa.usersmanagement.infrastructure.adapter.email.KafkaEmailSenderAdapter;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.NoOpEmailSenderAdapter;
+import com.jcaa.usersmanagement.infrastructure.messaging.kafka.KafkaMessagePublisher;
+import com.jcaa.usersmanagement.infrastructure.messaging.kafka.KafkaNotificationProperties;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
@@ -41,6 +44,53 @@ class SmtpSpringConfigTest {
   void shouldSelectBrevoAdapterWhenBrevoIsConfigured() {
     runner
         .withPropertyValues(
+            "app.email.enabled=true",
+            "app.email.provider=brevo",
+            "brevo.api-key=test-api-key",
+            "brevo.from.address=verified@example.com")
+        .run(
+            context -> {
+              assertThat(context).hasNotFailed().hasSingleBean(EmailSenderPort.class);
+              assertThat(context.getBean(EmailSenderPort.class))
+                  .isInstanceOf(BrevoEmailSenderAdapter.class);
+            });
+  }
+
+  @Test
+  void shouldSelectKafkaAdapterForApiRoleWhenQueueIsEnabled() {
+    runner
+        .withBean(KafkaMessagePublisher.class, () -> org.mockito.Mockito.mock(KafkaMessagePublisher.class))
+        .withBean(
+            KafkaNotificationProperties.class,
+            () ->
+                new KafkaNotificationProperties(
+                    true,
+                    "kafka.example:10286",
+                    "users-api",
+                    "fake-password",
+                    "SASL_SSL",
+                    "SCRAM-SHA-256",
+                    "user.notification.requested",
+                    "user.notification.result",
+                    "user.notification.dlq",
+                    "users-api",
+                    "notify-service",
+                    10000))
+        .withPropertyValues("app.kafka.enabled=true", "app.runtime.role=api")
+        .run(
+            context -> {
+              assertThat(context).hasNotFailed().hasSingleBean(EmailSenderPort.class);
+              assertThat(context.getBean(EmailSenderPort.class))
+                  .isInstanceOf(KafkaEmailSenderAdapter.class);
+            });
+  }
+
+  @Test
+  void shouldUseDirectEmailAdapterForWorkerRole() {
+    runner
+        .withPropertyValues(
+            "app.kafka.enabled=true",
+            "app.runtime.role=notification-worker",
             "app.email.enabled=true",
             "app.email.provider=brevo",
             "brevo.api-key=test-api-key",

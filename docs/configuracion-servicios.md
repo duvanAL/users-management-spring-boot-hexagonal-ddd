@@ -74,24 +74,42 @@ archivo de entorno hasta que la implementación y sus pruebas los confirmen.
 
 ### Aiven Kafka
 
-Ya están creados los usuarios de servicio y las ACLs limitadas a los topics.
-Las credenciales deben recuperarse y guardarse directamente en un gestor seguro;
-no compartirlas por chat ni subirlas al repositorio.
+La API y el worker usan procesos y credenciales separados. Los usuarios de
+servicio y las ACLs deben estar limitados a los topics que les corresponden.
+No compartir credenciales por chat ni subirlas al repositorio.
 
-| Variable propuesta | Uso | Tratamiento |
+| Variable | Uso | Tratamiento |
 | --- | --- | --- |
-| `KAFKA_BOOTSTRAP_SERVERS` | Host y puerto TLS de Aiven | Configuración privada |
+| `APP_KAFKA_ENABLED` | Activa productores y consumidores Kafka | No es secreto; por defecto `false` |
+| `APP_RUNTIME_ROLE` | `api` o `notification-worker` | No es secreto |
+| `KAFKA_BOOTSTRAP_SERVERS` | Host y puerto TLS de Aiven, sin `https://` | Configuración privada |
 | `KAFKA_SECURITY_PROTOCOL` | `SASL_SSL` | No es secreto |
-| `KAFKA_SASL_MECHANISM` | `SCRAM-SHA-256` según el servicio | No es secreto; verificar en conexión |
-| `KAFKA_USERNAME`, `KAFKA_PASSWORD` | Usuario de servicio correspondiente | Contraseña secreta |
-| `KAFKA_USERS_GROUP_ID` | Grupo consumidor del API | Debe ser exactamente `users-api` para coincidir con su ACL |
-| `KAFKA_NOTIFY_GROUP_ID` | Grupo consumidor de notificaciones | Debe ser exactamente `notify-service` para coincidir con su ACL |
+| `KAFKA_SASL_MECHANISM` | `SCRAM-SHA-256` | No es secreto; debe coincidir con Aiven |
+| `KAFKA_USERNAME`, `KAFKA_PASSWORD` | Credenciales del proceso desplegado | La contraseña es secreta; API usa `users-api` y worker usa `notify-service` |
+| `KAFKA_USERS_GROUP_ID` | Grupo consumidor de resultados de la API | Mantener `users-api` según su ACL |
+| `KAFKA_NOTIFY_GROUP_ID` | Grupo consumidor de solicitudes del worker | Mantener `notify-service` según su ACL |
+| `KAFKA_TOPIC_NOTIFICATION_REQUESTED`, `KAFKA_TOPIC_NOTIFICATION_RESULT`, `KAFKA_TOPIC_NOTIFICATION_DLQ` | Topics de solicitud, resultado y mensajes fallidos | No secretos; deben coincidir exactamente con Aiven |
+| `KAFKA_SEND_TIMEOUT_MS` | Máximo de espera por confirmación del broker | No es secreto |
+| `KAFKA_LISTENER_AUTO_STARTUP` | Permite pausar el consumo sin deshabilitar la configuración | No es secreto; por defecto `true` |
 
-Topics: `user.notification.requested`, `user.notification.result` y
-`user.notification.dlq`. El API publica solicitudes y consume resultados; el
-servicio de notificaciones consume solicitudes y publica resultados o mensajes
-fallidos en la DLQ. La implementación debe decidir si serán dos procesos o un
-servicio con ambos roles antes de asignar variables a Render.
+Flujo: el API envía `user.notification.requested` y consume
+`user.notification.result`; el worker consume solicitudes, envía correos mediante
+el proveedor configurado, publica resultados y coloca fallos de entrega en
+`user.notification.dlq`. En la API, `APP_KAFKA_ENABLED=true` y
+`APP_RUNTIME_ROLE=api`; en el worker, `APP_KAFKA_ENABLED=true`,
+`APP_RUNTIME_ROLE=notification-worker`, `APP_EMAIL_ENABLED=true` y
+`APP_EMAIL_PROVIDER=brevo`. El worker arranca un contexto reducido y no requiere
+conectarse a PostgreSQL. No configurar `KAFKA_USERNAME`/`KAFKA_PASSWORD` iguales
+entre ambos servicios.
+
+Los mensajes de solicitud contienen correo, nombre y contenido HTML, por lo que
+los topics deben permanecer privados y protegidos por TLS/ACLs; la retención de
+72 horas limita el tiempo de exposición. El envío es de tipo *at least once*: si
+Brevo acepta el mensaje pero el worker falla antes de publicar el resultado, una
+redelivery puede producir un correo duplicado. La escritura de usuario en
+PostgreSQL y la publicación en Kafka tampoco usan aún un transactional outbox;
+si el broker falla después de guardar el usuario, la API puede responder error
+aunque el cambio de base de datos ya haya quedado aplicado.
 
 ### Aiven Valkey
 
@@ -139,6 +157,8 @@ exponerse a Swagger UI, Vercel ni al navegador.
 ## Estado de este inventario
 
 Brevo REST está disponible como adaptador seleccionable, con reintentos acotados
-y circuit breaker; no se habilita por defecto ni se ha cambiado la configuración
-de Render. Kafka, Valkey y Storage aún no están integrados. Se mantendrá un
-servicio a la vez y se actualizará este inventario con cada cambio correspondiente.
+y circuit breaker. Kafka tiene productores/consumidores para la API y un worker
+de notificaciones en un proceso separado; ambos siguen desactivados por defecto
+y la configuración de Render no se ha cambiado. Valkey y Storage aún no están
+integrados. Se mantendrá un servicio a la vez y se actualizará este inventario
+con cada cambio correspondiente.

@@ -7,12 +7,16 @@ import com.jcaa.usersmanagement.infrastructure.adapter.email.BrevoResilience;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.BrevoResilienceConfig;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.GmailApiConfig;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.GmailApiEmailSenderAdapter;
+import com.jcaa.usersmanagement.infrastructure.adapter.email.KafkaEmailSenderAdapter;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.JavaMailEmailSenderAdapter;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.NoOpEmailSenderAdapter;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.SmtpConfig;
+import com.jcaa.usersmanagement.infrastructure.messaging.kafka.KafkaMessagePublisher;
+import com.jcaa.usersmanagement.infrastructure.messaging.kafka.KafkaNotificationProperties;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.retry.Retry;
 import java.time.Duration;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -132,16 +136,40 @@ public class SmtpSpringConfig {
   @Value("${app.email.enabled:false}")
   private boolean emailEnabled;
 
+  @Value("${app.kafka.enabled:false}")
+  private boolean kafkaEnabled;
+
+  @Value("${app.runtime.role:api}")
+  private String runtimeRole;
+
   @Bean
   public SmtpConfig smtpConfig() {
     return new SmtpConfig(smtpHost, smtpPort, smtpUsername, smtpPassword, smtpFromAddress, smtpFromName);
   }
 
   @Bean
-  public EmailSenderPort emailSender(final SmtpConfig config) {
+  public EmailSenderPort emailSender(
+      final SmtpConfig config,
+      final ObjectProvider<KafkaMessagePublisher> kafkaPublisherProvider,
+      final ObjectProvider<KafkaNotificationProperties> kafkaPropertiesProvider) {
+    if (kafkaEnabled && "api".equalsIgnoreCase(runtimeRole)) {
+      return new KafkaEmailSenderAdapter(
+          kafkaPublisherProvider.getObject(), kafkaPropertiesProvider.getObject());
+    }
+    if ("notification-worker".equalsIgnoreCase(runtimeRole)) {
+      if (!kafkaEnabled || !emailEnabled) {
+        throw new IllegalStateException(
+            "The notification worker requires APP_KAFKA_ENABLED=true and APP_EMAIL_ENABLED=true.");
+      }
+      return configuredDirectEmailSender(config);
+    }
     if (!emailEnabled) {
       return new NoOpEmailSenderAdapter();
     }
+    return configuredDirectEmailSender(config);
+  }
+
+  private EmailSenderPort configuredDirectEmailSender(final SmtpConfig config) {
     if ("gmail".equalsIgnoreCase(emailProvider)) {
       return new GmailApiEmailSenderAdapter(
           new GmailApiConfig(

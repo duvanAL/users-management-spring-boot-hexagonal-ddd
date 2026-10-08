@@ -66,6 +66,12 @@
       <artifactId>spring-boot-starter-security</artifactId>
     </dependency>
 
+    <!-- Kafka producer/consumer para notificaciones asíncronas. -->
+    <dependency>
+      <groupId>org.springframework.kafka</groupId>
+      <artifactId>spring-kafka</artifactId>
+    </dependency>
+
     <!-- ======================================================== -->
     <!-- Dependencias no gestionadas por el BOM de Spring Boot     -->
     <!-- ======================================================== -->
