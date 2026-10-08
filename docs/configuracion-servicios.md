@@ -100,6 +100,7 @@ No compartir credenciales por chat ni subirlas al repositorio.
 | `KAFKA_NOTIFY_GROUP_ID` | Grupo consumidor de solicitudes del worker | Mantener `notify-service` según su ACL |
 | `KAFKA_TOPIC_NOTIFICATION_REQUESTED`, `KAFKA_TOPIC_NOTIFICATION_RESULT`, `KAFKA_TOPIC_NOTIFICATION_DLQ` | Topics de solicitud, resultado y mensajes fallidos | No secretos; deben coincidir exactamente con Aiven |
 | `KAFKA_SEND_TIMEOUT_MS` | Máximo de espera por confirmación del broker | No es secreto |
+| `KAFKA_OUTBOX_POLL_INTERVAL_MS` | Intervalo de sondeo del outbox en la API | No es secreto; 5000 ms por defecto |
 | `KAFKA_LISTENER_AUTO_STARTUP` | Permite pausar el consumo sin deshabilitar la configuración | No es secreto; por defecto `true` |
 
 Flujo: el API envía `user.notification.requested` y consume
@@ -112,14 +113,26 @@ el proveedor configurado, publica resultados y coloca fallos de entrega en
 conectarse a PostgreSQL. No configurar `KAFKA_USERNAME`/`KAFKA_PASSWORD` iguales
 entre ambos servicios.
 
+La API persiste ahora cada solicitud de correo en `email_notification_outbox`
+dentro de la misma transacción PostgreSQL que crea o actualiza al usuario. Un
+proceso programado publica una solicitud pendiente por ciclo; si Kafka no
+confirma, conserva la fila y reintenta con espera exponencial acotada (5 s hasta
+15 min). Tras confirmación del broker elimina la fila. `KAFKA_OUTBOX_POLL_INTERVAL_MS`
+controla el intervalo de sondeo (5 s por defecto). La migración está en
+`src/main/resources/db/migration/V20261008_01__create_email_notification_outbox.sql`.
+Como Render usa `DB_SCHEMA_INIT_MODE=never`, debe aplicarse manualmente en
+Supabase antes de desplegar una revisión con Kafka activado.
+
 Los mensajes de solicitud contienen correo, nombre y contenido HTML, por lo que
 los topics deben permanecer privados y protegidos por TLS/ACLs; la retención de
 72 horas limita el tiempo de exposición. El envío es de tipo *at least once*: si
 Brevo acepta el mensaje pero el worker falla antes de publicar el resultado, una
-redelivery puede producir un correo duplicado. La escritura de usuario en
-PostgreSQL y la publicación en Kafka tampoco usan aún un transactional outbox;
-si el broker falla después de guardar el usuario, la API puede responder error
-aunque el cambio de base de datos ya haya quedado aplicado.
+redelivery puede producir un correo duplicado. La publicación del API es *at
+least once*: si el broker acepta un mensaje pero se pierde la confirmación, el
+outbox puede publicarlo nuevamente con el mismo `notification_id`. El worker
+debe tolerar duplicados. El outbox guarda correo, nombre y contenido HTML; las
+filas se eliminan tras confirmación Kafka y los reintentos pendientes deben
+monitorearse y purgarse conforme a una política de retención adecuada.
 
 ### Aiven Valkey
 

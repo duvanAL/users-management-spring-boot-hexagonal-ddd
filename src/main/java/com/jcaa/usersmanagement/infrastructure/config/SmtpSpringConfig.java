@@ -11,8 +11,7 @@ import com.jcaa.usersmanagement.infrastructure.adapter.email.KafkaEmailSenderAda
 import com.jcaa.usersmanagement.infrastructure.adapter.email.JavaMailEmailSenderAdapter;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.NoOpEmailSenderAdapter;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.SmtpConfig;
-import com.jcaa.usersmanagement.infrastructure.messaging.kafka.KafkaMessagePublisher;
-import com.jcaa.usersmanagement.infrastructure.messaging.kafka.KafkaNotificationProperties;
+import com.jcaa.usersmanagement.infrastructure.messaging.kafka.EmailOutboxRepository;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.retry.Retry;
 import java.time.Duration;
@@ -150,11 +149,9 @@ public class SmtpSpringConfig {
   @Bean
   public EmailSenderPort emailSender(
       final SmtpConfig config,
-      final ObjectProvider<KafkaMessagePublisher> kafkaPublisherProvider,
-      final ObjectProvider<KafkaNotificationProperties> kafkaPropertiesProvider) {
+      final ObjectProvider<EmailOutboxRepository> outboxRepositoryProvider) {
     if (kafkaEnabled && "api".equalsIgnoreCase(runtimeRole)) {
-      return new KafkaEmailSenderAdapter(
-          kafkaPublisherProvider.getObject(), kafkaPropertiesProvider.getObject());
+      return new KafkaEmailSenderAdapter(outboxRepositoryProvider.getObject());
     }
     if ("notification-worker".equalsIgnoreCase(runtimeRole)) {
       if (!kafkaEnabled || !emailEnabled) {

@@ -7,8 +7,7 @@ import com.jcaa.usersmanagement.domain.model.EmailDestinationModel;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.BrevoEmailSenderAdapter;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.KafkaEmailSenderAdapter;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.NoOpEmailSenderAdapter;
-import com.jcaa.usersmanagement.infrastructure.messaging.kafka.KafkaMessagePublisher;
-import com.jcaa.usersmanagement.infrastructure.messaging.kafka.KafkaNotificationProperties;
+import com.jcaa.usersmanagement.infrastructure.messaging.kafka.EmailOutboxRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
@@ -59,23 +58,7 @@ class SmtpSpringConfigTest {
   @Test
   void shouldSelectKafkaAdapterForApiRoleWhenQueueIsEnabled() {
     runner
-        .withBean(KafkaMessagePublisher.class, () -> org.mockito.Mockito.mock(KafkaMessagePublisher.class))
-        .withBean(
-            KafkaNotificationProperties.class,
-            () ->
-                new KafkaNotificationProperties(
-                    true,
-                    "kafka.example:10286",
-                    "users-api",
-                    "fake-password",
-                    "SASL_SSL",
-                    "SCRAM-SHA-256",
-                    "user.notification.requested",
-                    "user.notification.result",
-                    "user.notification.dlq",
-                    "users-api",
-                    "notify-service",
-                    10000))
+        .withBean(EmailOutboxRepository.class, () -> org.mockito.Mockito.mock(EmailOutboxRepository.class))
         .withPropertyValues("app.kafka.enabled=true", "app.runtime.role=api")
         .run(
             context -> {

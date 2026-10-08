@@ -2,6 +2,7 @@ package com.jcaa.usersmanagement.infrastructure.adapter.persistence.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.jcaa.usersmanagement.domain.enums.UserRole;
 import com.jcaa.usersmanagement.domain.enums.UserStatus;
@@ -17,12 +18,20 @@ import java.sql.Statement;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.jdbc.datasource.TransactionAwareDataSourceProxy;
+import org.springframework.transaction.support.TransactionTemplate;
+import com.jcaa.usersmanagement.infrastructure.messaging.kafka.EmailOutboxRepository;
+import com.jcaa.usersmanagement.infrastructure.messaging.kafka.NotificationRequestMessage;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -49,7 +58,7 @@ class UserRepositoryPostgresIntegrationTest {
     repository = new UserRepositoryPostgres(dataSource);
     try (Connection connection = dataSource.getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("TRUNCATE TABLE users");
+      statement.execute("TRUNCATE TABLE users, email_notification_outbox");
     }
   }
 
@@ -153,6 +162,84 @@ class UserRepositoryPostgresIntegrationTest {
     assertThat(result).isEmpty();
     assertThatThrownBy(() -> repository.update(newUser("No Existe", "missing@example.invalid")))
         .isInstanceOf(UserNotFoundException.class);
+  }
+
+  @Test
+  void shouldRollbackUserAndOutboxInsertAsOneTransaction() {
+    final DataSource transactionAwareDataSource = new TransactionAwareDataSourceProxy(dataSource);
+    final JdbcTemplate jdbcTemplate = new JdbcTemplate(transactionAwareDataSource);
+    final EmailOutboxRepository outboxRepository = new EmailOutboxRepository(jdbcTemplate);
+    final TransactionTemplate transaction =
+        new TransactionTemplate(new DataSourceTransactionManager(transactionAwareDataSource));
+    final String userId = UUID.randomUUID().toString();
+    final NotificationRequestMessage notification =
+        new NotificationRequestMessage(
+            1,
+            UUID.randomUUID(),
+            Instant.now().truncatedTo(ChronoUnit.MICROS),
+            "rollback@example.invalid",
+            "Rollback",
+            "Welcome",
+            "<p>Welcome</p>");
+
+    assertThatThrownBy(
+            () ->
+                transaction.execute(
+                    status -> {
+                      jdbcTemplate.update(
+                          "INSERT INTO users (id, name, email, password, role, status) VALUES (?, ?, ?, ?, ?, ?)",
+                          userId,
+                          "Rollback",
+                          "rollback@example.invalid",
+                          "hashed",
+                          "MEMBER",
+                          "PENDING");
+                      outboxRepository.enqueue(notification);
+                      throw new IllegalStateException("force rollback");
+                    }))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("force rollback");
+
+    assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM users WHERE id = ?", Integer.class, userId))
+        .isZero();
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM email_notification_outbox WHERE notification_id = ?",
+                Integer.class,
+                notification.notificationId()))
+        .isZero();
+  }
+
+  @Test
+  void shouldReadRetryAndDeleteOutboxEntries() {
+    final JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+    final EmailOutboxRepository outboxRepository = new EmailOutboxRepository(jdbcTemplate);
+    final NotificationRequestMessage notification =
+        new NotificationRequestMessage(
+            1,
+            UUID.randomUUID(),
+            Instant.now().truncatedTo(ChronoUnit.MICROS),
+            "outbox@example.invalid",
+            "Outbox",
+            "Subject",
+            "<p>Body</p>");
+    outboxRepository.enqueue(notification);
+
+    final EmailOutboxRepository.PendingEmailNotification pending =
+        outboxRepository.lockNextDue().orElseThrow();
+    assertThat(pending.message()).isEqualTo(notification);
+    assertThat(pending.attempts()).isZero();
+
+    outboxRepository.scheduleRetry(notification.notificationId(), Instant.now().plusSeconds(60));
+    assertThat(outboxRepository.lockNextDue()).isEmpty();
+
+    outboxRepository.markPublished(notification.notificationId());
+    assertThat(
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM email_notification_outbox WHERE notification_id = ?",
+                Integer.class,
+                notification.notificationId()))
+        .isZero();
   }
 
   private static UserModel newUser(final String name, final String email) {

@@ -13,6 +13,7 @@ import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Set;
 import jakarta.validation.ConstraintViolation;
@@ -28,6 +29,7 @@ public class CreateUserService implements CreateUserUseCase {
   private final Validator validator;
 
   @Override
+  @Transactional
   public UserModel execute(final CreateUserCommand command) {
     validateCommand(command);
 
