@@ -59,7 +59,8 @@ class DataSourceSpringConfigTest {
                 () -> assertEquals("test_secret", config.getPassword()),
                 () -> assertEquals(3, config.getMaximumPoolSize()),
                 () -> assertEquals(0, config.getMinimumIdle()),
-                () -> assertEquals(5000, config.getConnectionTimeout()));
+                () -> assertEquals(5000, config.getConnectionTimeout()),
+                () -> assertEquals(-1, config.getInitializationFailTimeout()));
           });
     }
   }
@@ -80,10 +81,22 @@ class DataSourceSpringConfigTest {
             () -> assertEquals("jdbc:postgresql://localhost:5432/crud_usuarios?sslmode=disable",
                 config.getJdbcUrl()),
             () -> assertEquals(5, config.getMaximumPoolSize()),
-            () -> assertEquals(1, config.getMinimumIdle()),
-            () -> assertEquals(30000, config.getConnectionTimeout()));
+            () -> assertEquals(0, config.getMinimumIdle()),
+            () -> assertEquals(30000, config.getConnectionTimeout()),
+            () -> assertEquals(-1, config.getInitializationFailTimeout()));
       });
     }
+  }
+
+  @Test
+  void shouldStartThePoolWithoutAnInitialDatabaseConnection() {
+    runner
+        .withPropertyValues(
+            PASSWORD_PROPERTY,
+            "DB_HOST=127.0.0.1",
+            "DB_PORT=1",
+            "DB_POOL_MIN_IDLE=0")
+        .run(context -> assertThat(context).hasNotFailed());
   }
 
   @ParameterizedTest

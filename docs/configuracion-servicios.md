@@ -16,6 +16,7 @@ persistencia.
 | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD` | Conexión PostgreSQL | `DB_PASSWORD` es secreto; los demás son configuración privada del servicio |
 | `DB_SSLMODE` | TLS de PostgreSQL; Render/Supabase debe usar `require` | No es secreto |
 | `DB_POOL_MAX_SIZE`, `DB_POOL_MIN_IDLE`, `DB_CONNECTION_TIMEOUT_MS` | Pool JDBC | No son secretos |
+| `DB_SCHEMA_INIT_MODE` | Controla la ejecución de `schema.sql`; local usa `always`, Render usa `never` | No es secreto; en producción requiere que el esquema ya esté aplicado |
 | `JWT_SECRET` | Firma de tokens | Secreto obligatorio; nunca incluir su valor en Git |
 | `JWT_EXPIRATION_SECONDS` | Duración del JWT | No es secreto |
 | `SEED_ADMIN_ENABLED` | Activación temporal del administrador inicial | No es secreto; mantener `false` después del seed |
@@ -23,22 +24,30 @@ persistencia.
 | `CORS_ALLOWED_ORIGINS` | Origen de Swagger UI | No es secreto |
 | `PORT` | Puerto asignado por Render | Lo define Render; no fijarlo manualmente en producción |
 
+Render usa `/health` como health check de liveness para no marcar el proceso como
+caído ante una indisponibilidad temporal de PostgreSQL; el estado de la base se
+consulta en `/actuator/health`. Hikari permite iniciar sin conexión inicial y
+crea conexiones bajo demanda (`DB_POOL_MIN_IDLE=0`), por lo que puede reconectar
+cuando PostgreSQL responda. En Render, `DB_SCHEMA_INIT_MODE=never` evita que el
+arranque dependa de ejecutar el esquema sobre la base remota: el esquema debe
+estar aplicado previamente y cualquier cambio futuro debe realizarse mediante
+una migración explícita. En local se mantiene `always`.
+
 ### Correo: diferencia entre la rama actual y la rama del profesor
 
-La rama actual configura Gmail API y también conserva un adaptador SMTP local.
-El correo está deshabilitado por defecto.
+La rama de integración agrega Brevo REST como proveedor seleccionable y conserva
+Gmail API y SMTP durante la transición. El correo está deshabilitado por defecto.
 
 | Variable de la rama actual | Uso | Tratamiento |
 | --- | --- | --- |
 | `APP_EMAIL_ENABLED` | Habilita o deshabilita correo | No es secreto |
-| `APP_EMAIL_PROVIDER` | `gmail` o `smtp` en esta copia | No es secreto |
+| `APP_EMAIL_PROVIDER` | `gmail`, `smtp` o `brevo` | No es secreto |
 | `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN` | OAuth de Gmail API | `CLIENT_SECRET` y `REFRESH_TOKEN` son secretos; proteger también el ID |
 | `GMAIL_SENDER_ADDRESS`, `GMAIL_SENDER_NAME` | Remitente | No son secretos, pero son datos operativos |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_ADDRESS`, `SMTP_FROM_NAME` | Adaptador SMTP heredado/local | La contraseña es secreta; SMTP no es el proveedor previsto para Render |
 
-La rama del profesor `feature/brevo-rest-email-resilience` usa otra
-configuración. Al integrar esa rama, se debe adoptar su contrato Brevo y no
-mantener dos proveedores activos por accidente:
+El adaptador Brevo se configura con estas variables. Solo `BREVO_API_KEY` es
+secreto; no debe registrarse ni compartirse:
 
 | Variable de la rama Brevo | Uso | Tratamiento |
 | --- | --- | --- |
@@ -46,13 +55,26 @@ mantener dos proveedores activos por accidente:
 | `BREVO_FROM_ADDRESS` | Remitente verificado en Brevo | Configuración privada |
 | `BREVO_FROM_NAME` | Nombre del remitente | No es secreto |
 | `BREVO_BASE_URL` | URL base de Brevo | No es secreto; valor por defecto en la rama: `https://api.brevo.com` |
-| `BREVO_CONNECT_TIMEOUT`, `BREVO_READ_TIMEOUT` | Límites de espera HTTP | No son secretos |
-| `BREVO_RETRY_MAX_ATTEMPTS`, `BREVO_RETRY_INITIAL_DELAY`, `BREVO_RETRY_MULTIPLIER` | Reintentos ante fallos transitorios | No son secretos |
-| `BREVO_CIRCUIT_FAILURE_THRESHOLD`, `BREVO_CIRCUIT_WINDOW_SIZE`, `BREVO_CIRCUIT_MINIMUM_CALLS`, `BREVO_CIRCUIT_OPEN_DURATION` | Circuit breaker | No son secretos |
+| `BREVO_CONNECT_TIMEOUT_MS`, `BREVO_READ_TIMEOUT_MS` | Límites de espera HTTP en milisegundos | No son secretos |
+| `BREVO_RETRY_MAX_ATTEMPTS`, `BREVO_RETRY_INITIAL_DELAY_MS`, `BREVO_RETRY_MULTIPLIER` | Reintentos ante fallos transitorios | No son secretos |
+| `BREVO_CIRCUIT_FAILURE_THRESHOLD`, `BREVO_CIRCUIT_WINDOW_SIZE`, `BREVO_CIRCUIT_MINIMUM_CALLS`, `BREVO_CIRCUIT_OPEN_DURATION_MS` | Circuit breaker | No son secretos |
 
-Los valores predeterminados de resiliencia están en la configuración de esa
-rama. No es necesario crear variables en Render para ellos salvo que queramos
-cambiarlos. Esta copia aún no reconoce `BREVO_*` hasta integrar el código.
+La API ya consume las variables anteriores. Las opciones de reintento tienen
+valores predeterminados seguros: 3 intentos como máximo (incluyendo el primero),
+espera exponencial de 500 ms y multiplicador 2. El circuit breaker usa una
+ventana de 10 llamadas, requiere al menos 5 para calcular fallos, abre al alcanzar
+el 50 % y permanece abierto 30 segundos. Se pueden sobreescribir desde el entorno;
+no es necesario añadirlas a Render mientras esos valores predeterminados sean
+adecuados. No activar `APP_EMAIL_ENABLED` ni cambiar el proveedor de producción
+como parte de esta integración.
+
+El reintento aplica a fallos transitorios (`408`, `429`, `5xx` y errores de
+conexión/timeout), no a errores permanentes como `400` o `401`. Como el envío es
+una operación HTTP `POST`, si Brevo acepta el correo pero la respuesta se pierde
+por un timeout, un reintento podría producir un duplicado; el envío exactamente
+una vez no se puede garantizar solo con el cliente. El circuit breaker evalúa el
+resultado final después de agotar los reintentos y bloquea temporalmente nuevas
+llamadas cuando el proveedor presenta fallos sostenidos.
 
 ## Servicios externos preparados, pendientes de integración
 
@@ -62,24 +84,55 @@ archivo de entorno hasta que la implementación y sus pruebas los confirmen.
 
 ### Aiven Kafka
 
-Ya están creados los usuarios de servicio y las ACLs limitadas a los topics.
-Las credenciales deben recuperarse y guardarse directamente en un gestor seguro;
-no compartirlas por chat ni subirlas al repositorio.
+La API y el worker usan procesos y credenciales separados. Los usuarios de
+servicio y las ACLs deben estar limitados a los topics que les corresponden.
+No compartir credenciales por chat ni subirlas al repositorio.
 
-| Variable propuesta | Uso | Tratamiento |
+| Variable | Uso | Tratamiento |
 | --- | --- | --- |
-| `KAFKA_BOOTSTRAP_SERVERS` | Host y puerto TLS de Aiven | Configuración privada |
+| `APP_KAFKA_ENABLED` | Activa productores y consumidores Kafka | No es secreto; por defecto `false` |
+| `APP_RUNTIME_ROLE` | `api` o `notification-worker` | No es secreto |
+| `KAFKA_BOOTSTRAP_SERVERS` | Host y puerto TLS de Aiven, sin `https://` | Configuración privada |
 | `KAFKA_SECURITY_PROTOCOL` | `SASL_SSL` | No es secreto |
-| `KAFKA_SASL_MECHANISM` | `SCRAM-SHA-256` según el servicio | No es secreto; verificar en conexión |
-| `KAFKA_USERNAME`, `KAFKA_PASSWORD` | Usuario de servicio correspondiente | Contraseña secreta |
-| `KAFKA_USERS_GROUP_ID` | Grupo consumidor del API | Debe ser exactamente `users-api` para coincidir con su ACL |
-| `KAFKA_NOTIFY_GROUP_ID` | Grupo consumidor de notificaciones | Debe ser exactamente `notify-service` para coincidir con su ACL |
+| `KAFKA_SASL_MECHANISM` | `SCRAM-SHA-256` | No es secreto; debe coincidir con Aiven |
+| `KAFKA_USERNAME`, `KAFKA_PASSWORD` | Credenciales del proceso desplegado | La contraseña es secreta; API usa `users-api` y worker usa `notify-service` |
+| `KAFKA_USERS_GROUP_ID` | Grupo consumidor de resultados de la API | Mantener `users-api` según su ACL |
+| `KAFKA_NOTIFY_GROUP_ID` | Grupo consumidor de solicitudes del worker | Mantener `notify-service` según su ACL |
+| `KAFKA_TOPIC_NOTIFICATION_REQUESTED`, `KAFKA_TOPIC_NOTIFICATION_RESULT`, `KAFKA_TOPIC_NOTIFICATION_DLQ` | Topics de solicitud, resultado y mensajes fallidos | No secretos; deben coincidir exactamente con Aiven |
+| `KAFKA_SEND_TIMEOUT_MS` | Máximo de espera por confirmación del broker | No es secreto |
+| `KAFKA_OUTBOX_POLL_INTERVAL_MS` | Intervalo de sondeo del outbox en la API | No es secreto; 5000 ms por defecto |
+| `KAFKA_LISTENER_AUTO_STARTUP` | Permite pausar el consumo sin deshabilitar la configuración | No es secreto; por defecto `true` |
 
-Topics: `user.notification.requested`, `user.notification.result` y
-`user.notification.dlq`. El API publica solicitudes y consume resultados; el
-servicio de notificaciones consume solicitudes y publica resultados o mensajes
-fallidos en la DLQ. La implementación debe decidir si serán dos procesos o un
-servicio con ambos roles antes de asignar variables a Render.
+Flujo: el API envía `user.notification.requested` y consume
+`user.notification.result`; el worker consume solicitudes, envía correos mediante
+el proveedor configurado, publica resultados y coloca fallos de entrega en
+`user.notification.dlq`. En la API, `APP_KAFKA_ENABLED=true` y
+`APP_RUNTIME_ROLE=api`; en el worker, `APP_KAFKA_ENABLED=true`,
+`APP_RUNTIME_ROLE=notification-worker`, `APP_EMAIL_ENABLED=true` y
+`APP_EMAIL_PROVIDER=brevo`. El worker arranca un contexto reducido y no requiere
+conectarse a PostgreSQL. No configurar `KAFKA_USERNAME`/`KAFKA_PASSWORD` iguales
+entre ambos servicios.
+
+La API persiste ahora cada solicitud de correo en `email_notification_outbox`
+dentro de la misma transacción PostgreSQL que crea o actualiza al usuario. Un
+proceso programado publica una solicitud pendiente por ciclo; si Kafka no
+confirma, conserva la fila y reintenta con espera exponencial acotada (5 s hasta
+15 min). Tras confirmación del broker elimina la fila. `KAFKA_OUTBOX_POLL_INTERVAL_MS`
+controla el intervalo de sondeo (5 s por defecto). La migración está en
+`src/main/resources/db/migration/V20261008_01__create_email_notification_outbox.sql`.
+Como Render usa `DB_SCHEMA_INIT_MODE=never`, debe aplicarse manualmente en
+Supabase antes de desplegar una revisión con Kafka activado.
+
+Los mensajes de solicitud contienen correo, nombre y contenido HTML, por lo que
+los topics deben permanecer privados y protegidos por TLS/ACLs; la retención de
+72 horas limita el tiempo de exposición. El envío es de tipo *at least once*: si
+Brevo acepta el mensaje pero el worker falla antes de publicar el resultado, una
+redelivery puede producir un correo duplicado. La publicación del API es *at
+least once*: si el broker acepta un mensaje pero se pierde la confirmación, el
+outbox puede publicarlo nuevamente con el mismo `notification_id`. El worker
+debe tolerar duplicados. El outbox guarda correo, nombre y contenido HTML; las
+filas se eliminan tras confirmación Kafka y los reintentos pendientes deben
+monitorearse y purgarse conforme a una política de retención adecuada.
 
 ### Aiven Valkey
 
@@ -126,7 +179,9 @@ exponerse a Swagger UI, Vercel ni al navegador.
 
 ## Estado de este inventario
 
-Esto es un documento de preparación. No agrega dependencias, no habilita
-servicios, no cambia variables en Render y no implementa Kafka, Valkey, Storage
-ni Brevo. Tras acordar el contrato final, se implementará un servicio a la vez y
-se actualizará este inventario junto con cada cambio correspondiente.
+Brevo REST está disponible como adaptador seleccionable, con reintentos acotados
+y circuit breaker. Kafka tiene productores/consumidores para la API y un worker
+de notificaciones en un proceso separado; ambos siguen desactivados por defecto
+y la configuración de Render no se ha cambiado. Valkey y Storage aún no están
+integrados. Se mantendrá un servicio a la vez y se actualizará este inventario
+con cada cambio correspondiente.
