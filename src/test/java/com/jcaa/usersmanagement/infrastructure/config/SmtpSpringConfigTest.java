@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.jcaa.usersmanagement.application.port.out.EmailSenderPort;
 import com.jcaa.usersmanagement.domain.model.EmailDestinationModel;
+import com.jcaa.usersmanagement.infrastructure.adapter.email.BrevoEmailSenderAdapter;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.NoOpEmailSenderAdapter;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -34,5 +35,21 @@ class SmtpSpringConfigTest {
       context.getBean(EmailSenderPort.class).send(
           new EmailDestinationModel("user@example.invalid", "Usuario", "Asunto", "Mensaje"));
     });
+  }
+
+  @Test
+  void shouldSelectBrevoAdapterWhenBrevoIsConfigured() {
+    runner
+        .withPropertyValues(
+            "app.email.enabled=true",
+            "app.email.provider=brevo",
+            "brevo.api-key=test-api-key",
+            "brevo.from.address=verified@example.com")
+        .run(
+            context -> {
+              assertThat(context).hasNotFailed().hasSingleBean(EmailSenderPort.class);
+              assertThat(context.getBean(EmailSenderPort.class))
+                  .isInstanceOf(BrevoEmailSenderAdapter.class);
+            });
   }
 }

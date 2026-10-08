@@ -25,20 +25,19 @@ persistencia.
 
 ### Correo: diferencia entre la rama actual y la rama del profesor
 
-La rama actual configura Gmail API y también conserva un adaptador SMTP local.
-El correo está deshabilitado por defecto.
+La rama de integración agrega Brevo REST como proveedor seleccionable y conserva
+Gmail API y SMTP durante la transición. El correo está deshabilitado por defecto.
 
 | Variable de la rama actual | Uso | Tratamiento |
 | --- | --- | --- |
 | `APP_EMAIL_ENABLED` | Habilita o deshabilita correo | No es secreto |
-| `APP_EMAIL_PROVIDER` | `gmail` o `smtp` en esta copia | No es secreto |
+| `APP_EMAIL_PROVIDER` | `gmail`, `smtp` o `brevo` | No es secreto |
 | `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN` | OAuth de Gmail API | `CLIENT_SECRET` y `REFRESH_TOKEN` son secretos; proteger también el ID |
 | `GMAIL_SENDER_ADDRESS`, `GMAIL_SENDER_NAME` | Remitente | No son secretos, pero son datos operativos |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_ADDRESS`, `SMTP_FROM_NAME` | Adaptador SMTP heredado/local | La contraseña es secreta; SMTP no es el proveedor previsto para Render |
 
-La rama del profesor `feature/brevo-rest-email-resilience` usa otra
-configuración. Al integrar esa rama, se debe adoptar su contrato Brevo y no
-mantener dos proveedores activos por accidente:
+El adaptador Brevo se configura con estas variables. Solo `BREVO_API_KEY` es
+secreto; no debe registrarse ni compartirse:
 
 | Variable de la rama Brevo | Uso | Tratamiento |
 | --- | --- | --- |
@@ -46,13 +45,14 @@ mantener dos proveedores activos por accidente:
 | `BREVO_FROM_ADDRESS` | Remitente verificado en Brevo | Configuración privada |
 | `BREVO_FROM_NAME` | Nombre del remitente | No es secreto |
 | `BREVO_BASE_URL` | URL base de Brevo | No es secreto; valor por defecto en la rama: `https://api.brevo.com` |
-| `BREVO_CONNECT_TIMEOUT`, `BREVO_READ_TIMEOUT` | Límites de espera HTTP | No son secretos |
+| `BREVO_CONNECT_TIMEOUT_MS`, `BREVO_READ_TIMEOUT_MS` | Límites de espera HTTP en milisegundos | No son secretos |
 | `BREVO_RETRY_MAX_ATTEMPTS`, `BREVO_RETRY_INITIAL_DELAY`, `BREVO_RETRY_MULTIPLIER` | Reintentos ante fallos transitorios | No son secretos |
 | `BREVO_CIRCUIT_FAILURE_THRESHOLD`, `BREVO_CIRCUIT_WINDOW_SIZE`, `BREVO_CIRCUIT_MINIMUM_CALLS`, `BREVO_CIRCUIT_OPEN_DURATION` | Circuit breaker | No son secretos |
 
-Los valores predeterminados de resiliencia están en la configuración de esa
-rama. No es necesario crear variables en Render para ellos salvo que queramos
-cambiarlos. Esta copia aún no reconoce `BREVO_*` hasta integrar el código.
+La API reconoce `BREVO_API_KEY`, `BREVO_FROM_ADDRESS`, `BREVO_FROM_NAME`,
+`BREVO_BASE_URL`, `BREVO_CONNECT_TIMEOUT_MS` y `BREVO_READ_TIMEOUT_MS`. Los
+valores de reintentos y circuit breaker se integrarán en un paso posterior; no
+agregarlos a Render todavía.
 
 ## Servicios externos preparados, pendientes de integración
 
@@ -126,7 +126,7 @@ exponerse a Swagger UI, Vercel ni al navegador.
 
 ## Estado de este inventario
 
-Esto es un documento de preparación. No agrega dependencias, no habilita
-servicios, no cambia variables en Render y no implementa Kafka, Valkey, Storage
-ni Brevo. Tras acordar el contrato final, se implementará un servicio a la vez y
-se actualizará este inventario junto con cada cambio correspondiente.
+Brevo REST está disponible como adaptador seleccionable, pero no se habilita por
+defecto ni se ha cambiado la configuración de Render. Kafka, Valkey y Storage
+aún no están integrados. Se mantendrá un servicio a la vez y se actualizará este
+inventario con cada cambio correspondiente.

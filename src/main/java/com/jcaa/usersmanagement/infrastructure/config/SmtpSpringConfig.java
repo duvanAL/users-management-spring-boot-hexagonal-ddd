@@ -1,14 +1,21 @@
 package com.jcaa.usersmanagement.infrastructure.config;
 
-import com.jcaa.usersmanagement.infrastructure.adapter.email.SmtpConfig;
 import com.jcaa.usersmanagement.application.port.out.EmailSenderPort;
+import com.jcaa.usersmanagement.infrastructure.adapter.email.BrevoConfig;
+import com.jcaa.usersmanagement.infrastructure.adapter.email.BrevoEmailSenderAdapter;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.GmailApiConfig;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.GmailApiEmailSenderAdapter;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.JavaMailEmailSenderAdapter;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.NoOpEmailSenderAdapter;
+import com.jcaa.usersmanagement.infrastructure.adapter.email.SmtpConfig;
+import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.client.RestClient;
 
 @Configuration
 public class SmtpSpringConfig {
@@ -25,6 +32,12 @@ public class SmtpSpringConfig {
   private static final String PROP_GMAIL_REFRESH_TOKEN = "${email.gmail.refresh-token:}";
   private static final String PROP_GMAIL_SENDER_ADDRESS = "${email.gmail.sender-address:}";
   private static final String PROP_GMAIL_SENDER_NAME = "${email.gmail.sender-name:Gestion de Usuarios}";
+  private static final String PROP_BREVO_BASE_URL = "${brevo.base-url:https://api.brevo.com}";
+  private static final String PROP_BREVO_API_KEY = "${brevo.api-key:}";
+  private static final String PROP_BREVO_FROM_ADDRESS = "${brevo.from.address:}";
+  private static final String PROP_BREVO_FROM_NAME = "${brevo.from.name:Gestion de Usuarios}";
+  private static final String PROP_BREVO_CONNECT_TIMEOUT_MS = "${brevo.timeout.connect-ms:3000}";
+  private static final String PROP_BREVO_READ_TIMEOUT_MS = "${brevo.timeout.read-ms:10000}";
 
   @Value(PROP_SMTP_HOST)
   private String smtpHost;
@@ -62,6 +75,24 @@ public class SmtpSpringConfig {
   @Value(PROP_GMAIL_SENDER_NAME)
   private String gmailSenderName;
 
+  @Value(PROP_BREVO_BASE_URL)
+  private String brevoBaseUrl;
+
+  @Value(PROP_BREVO_API_KEY)
+  private String brevoApiKey;
+
+  @Value(PROP_BREVO_FROM_ADDRESS)
+  private String brevoFromAddress;
+
+  @Value(PROP_BREVO_FROM_NAME)
+  private String brevoFromName;
+
+  @Value(PROP_BREVO_CONNECT_TIMEOUT_MS)
+  private long brevoConnectTimeoutMs;
+
+  @Value(PROP_BREVO_READ_TIMEOUT_MS)
+  private long brevoReadTimeoutMs;
+
   @Value("${app.email.enabled:false}")
   private boolean emailEnabled;
 
@@ -84,7 +115,32 @@ public class SmtpSpringConfig {
     if ("smtp".equalsIgnoreCase(emailProvider)) {
       return new JavaMailEmailSenderAdapter(config);
     }
-    throw new IllegalStateException("APP_EMAIL_PROVIDER must be either 'gmail' or 'smtp'.");
+    if ("brevo".equalsIgnoreCase(emailProvider)) {
+      final Duration connectTimeout = Duration.ofMillis(brevoConnectTimeoutMs);
+      final Duration readTimeout = Duration.ofMillis(brevoReadTimeoutMs);
+      final BrevoConfig brevoConfig =
+          new BrevoConfig(
+              brevoBaseUrl,
+              brevoApiKey,
+              brevoFromAddress,
+              brevoFromName,
+              connectTimeout,
+              readTimeout);
+      final SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+      requestFactory.setConnectTimeout(connectTimeout);
+      requestFactory.setReadTimeout(readTimeout);
+      final RestClient restClient =
+          RestClient.builder()
+              .baseUrl(brevoBaseUrl)
+              .requestFactory(requestFactory)
+              .defaultHeader("api-key", brevoApiKey)
+              .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+              .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+              .build();
+      return new BrevoEmailSenderAdapter(brevoConfig, restClient);
+    }
+    throw new IllegalStateException(
+        "APP_EMAIL_PROVIDER must be 'gmail', 'smtp' or 'brevo'.");
   }
 }
 
