@@ -46,13 +46,25 @@ secreto; no debe registrarse ni compartirse:
 | `BREVO_FROM_NAME` | Nombre del remitente | No es secreto |
 | `BREVO_BASE_URL` | URL base de Brevo | No es secreto; valor por defecto en la rama: `https://api.brevo.com` |
 | `BREVO_CONNECT_TIMEOUT_MS`, `BREVO_READ_TIMEOUT_MS` | Límites de espera HTTP en milisegundos | No son secretos |
-| `BREVO_RETRY_MAX_ATTEMPTS`, `BREVO_RETRY_INITIAL_DELAY`, `BREVO_RETRY_MULTIPLIER` | Reintentos ante fallos transitorios | No son secretos |
-| `BREVO_CIRCUIT_FAILURE_THRESHOLD`, `BREVO_CIRCUIT_WINDOW_SIZE`, `BREVO_CIRCUIT_MINIMUM_CALLS`, `BREVO_CIRCUIT_OPEN_DURATION` | Circuit breaker | No son secretos |
+| `BREVO_RETRY_MAX_ATTEMPTS`, `BREVO_RETRY_INITIAL_DELAY_MS`, `BREVO_RETRY_MULTIPLIER` | Reintentos ante fallos transitorios | No son secretos |
+| `BREVO_CIRCUIT_FAILURE_THRESHOLD`, `BREVO_CIRCUIT_WINDOW_SIZE`, `BREVO_CIRCUIT_MINIMUM_CALLS`, `BREVO_CIRCUIT_OPEN_DURATION_MS` | Circuit breaker | No son secretos |
 
-La API reconoce `BREVO_API_KEY`, `BREVO_FROM_ADDRESS`, `BREVO_FROM_NAME`,
-`BREVO_BASE_URL`, `BREVO_CONNECT_TIMEOUT_MS` y `BREVO_READ_TIMEOUT_MS`. Los
-valores de reintentos y circuit breaker se integrarán en un paso posterior; no
-agregarlos a Render todavía.
+La API ya consume las variables anteriores. Las opciones de reintento tienen
+valores predeterminados seguros: 3 intentos como máximo (incluyendo el primero),
+espera exponencial de 500 ms y multiplicador 2. El circuit breaker usa una
+ventana de 10 llamadas, requiere al menos 5 para calcular fallos, abre al alcanzar
+el 50 % y permanece abierto 30 segundos. Se pueden sobreescribir desde el entorno;
+no es necesario añadirlas a Render mientras esos valores predeterminados sean
+adecuados. No activar `APP_EMAIL_ENABLED` ni cambiar el proveedor de producción
+como parte de esta integración.
+
+El reintento aplica a fallos transitorios (`408`, `429`, `5xx` y errores de
+conexión/timeout), no a errores permanentes como `400` o `401`. Como el envío es
+una operación HTTP `POST`, si Brevo acepta el correo pero la respuesta se pierde
+por un timeout, un reintento podría producir un duplicado; el envío exactamente
+una vez no se puede garantizar solo con el cliente. El circuit breaker evalúa el
+resultado final después de agotar los reintentos y bloquea temporalmente nuevas
+llamadas cuando el proveedor presenta fallos sostenidos.
 
 ## Servicios externos preparados, pendientes de integración
 
@@ -126,7 +138,7 @@ exponerse a Swagger UI, Vercel ni al navegador.
 
 ## Estado de este inventario
 
-Brevo REST está disponible como adaptador seleccionable, pero no se habilita por
-defecto ni se ha cambiado la configuración de Render. Kafka, Valkey y Storage
-aún no están integrados. Se mantendrá un servicio a la vez y se actualizará este
-inventario con cada cambio correspondiente.
+Brevo REST está disponible como adaptador seleccionable, con reintentos acotados
+y circuit breaker; no se habilita por defecto ni se ha cambiado la configuración
+de Render. Kafka, Valkey y Storage aún no están integrados. Se mantendrá un
+servicio a la vez y se actualizará este inventario con cada cambio correspondiente.

@@ -24,6 +24,7 @@
     <javamail.version>1.6.2</javamail.version>
     <bcrypt.version>0.10.2</bcrypt.version>
     <jjwt.version>0.13.0</jjwt.version>
+    <resilience4j.version>2.2.0</resilience4j.version>
     <!-- Declarativas: Mockito y Jacoco siguen siendo explícitas para tener control -->
     <mockito.version>5.15.2</mockito.version>
     <jacoco.version>0.8.11</jacoco.version>
@@ -122,6 +123,18 @@
       <groupId>org.springdoc</groupId>
       <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
       <version>2.6.0</version>
+    </dependency>
+
+    <!-- Resiliencia programática para llamadas HTTP a Brevo (compatible con Java 17). -->
+    <dependency>
+      <groupId>io.github.resilience4j</groupId>
+      <artifactId>resilience4j-retry</artifactId>
+      <version>${resilience4j.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.github.resilience4j</groupId>
+      <artifactId>resilience4j-circuitbreaker</artifactId>
+      <version>${resilience4j.version}</version>
     </dependency>
 
     <!-- Swagger annotations — declarada explícitamente para que el IDE las indexe

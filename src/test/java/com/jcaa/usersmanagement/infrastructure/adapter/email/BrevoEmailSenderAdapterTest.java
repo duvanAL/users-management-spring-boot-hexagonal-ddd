@@ -10,6 +10,8 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 import com.jcaa.usersmanagement.domain.exception.EmailSenderException;
 import com.jcaa.usersmanagement.domain.model.EmailDestinationModel;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.retry.Retry;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
@@ -54,11 +56,14 @@ class BrevoEmailSenderAdapterTest {
   void shouldTranslateProviderHttpErrorsWithoutExposingResponseBody() {
     final RestClient.Builder builder = RestClient.builder().baseUrl(BASE_URL);
     final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-    server
-        .expect(requestTo(BASE_URL + "/v3/smtp/email"))
-        .andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS).body("sensitive provider response"));
+    for (int attempt = 0; attempt < 3; attempt++) {
+      server
+          .expect(requestTo(BASE_URL + "/v3/smtp/email"))
+          .andRespond(
+              withStatus(HttpStatus.TOO_MANY_REQUESTS).body("sensitive provider response"));
+    }
 
-    assertThatThrownBy(() -> adapter(builder).send(destination()))
+    assertThatThrownBy(() -> adapter(builder, 3, 10, 5).send(destination()))
         .isInstanceOf(EmailSenderException.class)
         .hasMessage("La notificación por correo no pudo ser enviada.")
         .hasRootCauseMessage("Brevo API request failed: HTTP 429.")
@@ -67,7 +72,71 @@ class BrevoEmailSenderAdapterTest {
     server.verify();
   }
 
+  @Test
+  void shouldRetryTransientServerFailuresAndStopAfterProviderAccepts() {
+    final RestClient.Builder builder = RestClient.builder().baseUrl(BASE_URL);
+    final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+    server
+        .expect(requestTo(BASE_URL + "/v3/smtp/email"))
+        .andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
+    server
+        .expect(requestTo(BASE_URL + "/v3/smtp/email"))
+        .andRespond(withSuccess());
+
+    adapter(builder, 3, 10, 5).send(destination());
+
+    server.verify();
+  }
+
+  @Test
+  void shouldNotRetryPermanentClientErrors() {
+    final RestClient.Builder builder = RestClient.builder().baseUrl(BASE_URL);
+    final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+    server
+        .expect(requestTo(BASE_URL + "/v3/smtp/email"))
+        .andRespond(withStatus(HttpStatus.BAD_REQUEST));
+
+    assertThatThrownBy(() -> adapter(builder, 3, 10, 5).send(destination()))
+        .isInstanceOf(EmailSenderException.class)
+        .hasRootCauseMessage("Brevo API request failed: HTTP 400.");
+
+    server.verify();
+  }
+
+  @Test
+  void shouldOpenCircuitAfterRepeatedTransientFailures() {
+    final RestClient.Builder builder = RestClient.builder().baseUrl(BASE_URL);
+    final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+    server
+        .expect(requestTo(BASE_URL + "/v3/smtp/email"))
+        .andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
+    server
+        .expect(requestTo(BASE_URL + "/v3/smtp/email"))
+        .andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
+    final BrevoEmailSenderAdapter adapter = adapter(builder, 1, 2, 2);
+
+    assertThatThrownBy(() -> adapter.send(destination()))
+        .isInstanceOf(EmailSenderException.class)
+        .hasRootCauseMessage("Brevo API request failed: HTTP 503.");
+    assertThatThrownBy(() -> adapter.send(destination()))
+        .isInstanceOf(EmailSenderException.class)
+        .hasRootCauseMessage("Brevo API request failed: HTTP 503.");
+    assertThatThrownBy(() -> adapter.send(destination()))
+        .isInstanceOf(EmailSenderException.class)
+        .hasRootCauseMessage("Brevo API request failed: CallNotPermittedException.");
+
+    server.verify();
+  }
+
   private static BrevoEmailSenderAdapter adapter(final RestClient.Builder builder) {
+    return adapter(builder, 1, 10, 5);
+  }
+
+  private static BrevoEmailSenderAdapter adapter(
+      final RestClient.Builder builder,
+      final int retryMaxAttempts,
+      final int circuitWindowSize,
+      final int circuitMinimumCalls) {
     final BrevoConfig config =
         new BrevoConfig(
             BASE_URL,
@@ -77,7 +146,18 @@ class BrevoEmailSenderAdapterTest {
             Duration.ofSeconds(2),
             Duration.ofSeconds(5));
     final RestClient client = builder.defaultHeader("api-key", API_KEY).build();
-    return new BrevoEmailSenderAdapter(config, client);
+    final BrevoResilienceConfig resilienceConfig =
+        new BrevoResilienceConfig(
+            retryMaxAttempts,
+            Duration.ofMillis(1),
+            1.0,
+            50,
+            circuitWindowSize,
+            circuitMinimumCalls,
+            Duration.ofSeconds(30));
+    final Retry retry = BrevoResilience.retry(resilienceConfig);
+    final CircuitBreaker circuitBreaker = BrevoResilience.circuitBreaker(resilienceConfig);
+    return new BrevoEmailSenderAdapter(config, client, retry, circuitBreaker);
   }
 
   private static EmailDestinationModel destination() {

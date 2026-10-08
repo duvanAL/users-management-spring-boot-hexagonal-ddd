@@ -3,6 +3,9 @@ package com.jcaa.usersmanagement.infrastructure.adapter.email;
 import com.jcaa.usersmanagement.application.port.out.EmailSenderPort;
 import com.jcaa.usersmanagement.domain.exception.EmailSenderException;
 import com.jcaa.usersmanagement.domain.model.EmailDestinationModel;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.retry.Retry;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.client.RestClient;
@@ -19,10 +22,18 @@ public final class BrevoEmailSenderAdapter implements EmailSenderPort {
 
   private final BrevoConfig config;
   private final RestClient restClient;
+  private final Retry retry;
+  private final CircuitBreaker circuitBreaker;
 
-  public BrevoEmailSenderAdapter(final BrevoConfig config, final RestClient restClient) {
+  public BrevoEmailSenderAdapter(
+      final BrevoConfig config,
+      final RestClient restClient,
+      final Retry retry,
+      final CircuitBreaker circuitBreaker) {
     this.config = config;
     this.restClient = restClient;
+    this.retry = retry;
+    this.circuitBreaker = circuitBreaker;
   }
 
   @Override
@@ -36,9 +47,13 @@ public final class BrevoEmailSenderAdapter implements EmailSenderPort {
             destination.getSubject(),
             destination.getBody());
     try {
-      restClient.post().uri(SEND_EMAIL_PATH).body(request).retrieve().toBodilessEntity();
+      final Runnable sendRequest =
+          () -> restClient.post().uri(SEND_EMAIL_PATH).body(request).retrieve().toBodilessEntity();
+      // The breaker observes the final result after bounded retries, not every attempt.
+      CircuitBreaker.decorateRunnable(circuitBreaker, Retry.decorateRunnable(retry, sendRequest))
+          .run();
       log.info(LOG_SENT);
-    } catch (final RestClientException exception) {
+    } catch (final RestClientException | CallNotPermittedException exception) {
       // Do not log the response body: provider errors can contain recipient or account details.
       final String failure =
           exception instanceof RestClientResponseException responseException

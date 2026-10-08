@@ -3,11 +3,15 @@ package com.jcaa.usersmanagement.infrastructure.config;
 import com.jcaa.usersmanagement.application.port.out.EmailSenderPort;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.BrevoConfig;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.BrevoEmailSenderAdapter;
+import com.jcaa.usersmanagement.infrastructure.adapter.email.BrevoResilience;
+import com.jcaa.usersmanagement.infrastructure.adapter.email.BrevoResilienceConfig;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.GmailApiConfig;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.GmailApiEmailSenderAdapter;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.JavaMailEmailSenderAdapter;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.NoOpEmailSenderAdapter;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.SmtpConfig;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.retry.Retry;
 import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -38,6 +42,17 @@ public class SmtpSpringConfig {
   private static final String PROP_BREVO_FROM_NAME = "${brevo.from.name:Gestion de Usuarios}";
   private static final String PROP_BREVO_CONNECT_TIMEOUT_MS = "${brevo.timeout.connect-ms:3000}";
   private static final String PROP_BREVO_READ_TIMEOUT_MS = "${brevo.timeout.read-ms:10000}";
+  private static final String PROP_BREVO_RETRY_MAX_ATTEMPTS = "${brevo.retry.max-attempts:3}";
+  private static final String PROP_BREVO_RETRY_INITIAL_DELAY_MS = "${brevo.retry.initial-delay-ms:500}";
+  private static final String PROP_BREVO_RETRY_MULTIPLIER = "${brevo.retry.multiplier:2.0}";
+  private static final String PROP_BREVO_CIRCUIT_FAILURE_THRESHOLD =
+      "${brevo.circuit-breaker.failure-rate-threshold:50}";
+  private static final String PROP_BREVO_CIRCUIT_WINDOW_SIZE =
+      "${brevo.circuit-breaker.sliding-window-size:10}";
+  private static final String PROP_BREVO_CIRCUIT_MINIMUM_CALLS =
+      "${brevo.circuit-breaker.minimum-calls:5}";
+  private static final String PROP_BREVO_CIRCUIT_OPEN_DURATION_MS =
+      "${brevo.circuit-breaker.open-duration-ms:30000}";
 
   @Value(PROP_SMTP_HOST)
   private String smtpHost;
@@ -93,6 +108,27 @@ public class SmtpSpringConfig {
   @Value(PROP_BREVO_READ_TIMEOUT_MS)
   private long brevoReadTimeoutMs;
 
+  @Value(PROP_BREVO_RETRY_MAX_ATTEMPTS)
+  private int brevoRetryMaxAttempts;
+
+  @Value(PROP_BREVO_RETRY_INITIAL_DELAY_MS)
+  private long brevoRetryInitialDelayMs;
+
+  @Value(PROP_BREVO_RETRY_MULTIPLIER)
+  private double brevoRetryMultiplier;
+
+  @Value(PROP_BREVO_CIRCUIT_FAILURE_THRESHOLD)
+  private float brevoCircuitFailureThreshold;
+
+  @Value(PROP_BREVO_CIRCUIT_WINDOW_SIZE)
+  private int brevoCircuitWindowSize;
+
+  @Value(PROP_BREVO_CIRCUIT_MINIMUM_CALLS)
+  private int brevoCircuitMinimumCalls;
+
+  @Value(PROP_BREVO_CIRCUIT_OPEN_DURATION_MS)
+  private long brevoCircuitOpenDurationMs;
+
   @Value("${app.email.enabled:false}")
   private boolean emailEnabled;
 
@@ -137,7 +173,18 @@ public class SmtpSpringConfig {
               .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
               .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
               .build();
-      return new BrevoEmailSenderAdapter(brevoConfig, restClient);
+      final BrevoResilienceConfig resilienceConfig =
+          new BrevoResilienceConfig(
+              brevoRetryMaxAttempts,
+              Duration.ofMillis(brevoRetryInitialDelayMs),
+              brevoRetryMultiplier,
+              brevoCircuitFailureThreshold,
+              brevoCircuitWindowSize,
+              brevoCircuitMinimumCalls,
+              Duration.ofMillis(brevoCircuitOpenDurationMs));
+      final Retry retry = BrevoResilience.retry(resilienceConfig);
+      final CircuitBreaker circuitBreaker = BrevoResilience.circuitBreaker(resilienceConfig);
+      return new BrevoEmailSenderAdapter(brevoConfig, restClient, retry, circuitBreaker);
     }
     throw new IllegalStateException(
         "APP_EMAIL_PROVIDER must be 'gmail', 'smtp' or 'brevo'.");
