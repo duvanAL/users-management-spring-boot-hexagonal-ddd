@@ -16,12 +16,22 @@ persistencia.
 | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD` | Conexión PostgreSQL | `DB_PASSWORD` es secreto; los demás son configuración privada del servicio |
 | `DB_SSLMODE` | TLS de PostgreSQL; Render/Supabase debe usar `require` | No es secreto |
 | `DB_POOL_MAX_SIZE`, `DB_POOL_MIN_IDLE`, `DB_CONNECTION_TIMEOUT_MS` | Pool JDBC | No son secretos |
+| `DB_SCHEMA_INIT_MODE` | Controla la ejecución de `schema.sql`; local usa `always`, Render usa `never` | No es secreto; en producción requiere que el esquema ya esté aplicado |
 | `JWT_SECRET` | Firma de tokens | Secreto obligatorio; nunca incluir su valor en Git |
 | `JWT_EXPIRATION_SECONDS` | Duración del JWT | No es secreto |
 | `SEED_ADMIN_ENABLED` | Activación temporal del administrador inicial | No es secreto; mantener `false` después del seed |
 | `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` | Datos del administrador inicial | Tratar ambos como secretos; retirar después del primer arranque |
 | `CORS_ALLOWED_ORIGINS` | Origen de Swagger UI | No es secreto |
 | `PORT` | Puerto asignado por Render | Lo define Render; no fijarlo manualmente en producción |
+
+Render usa `/health` como health check de liveness para no marcar el proceso como
+caído ante una indisponibilidad temporal de PostgreSQL; el estado de la base se
+consulta en `/actuator/health`. Hikari permite iniciar sin conexión inicial y
+crea conexiones bajo demanda (`DB_POOL_MIN_IDLE=0`), por lo que puede reconectar
+cuando PostgreSQL responda. En Render, `DB_SCHEMA_INIT_MODE=never` evita que el
+arranque dependa de ejecutar el esquema sobre la base remota: el esquema debe
+estar aplicado previamente y cualquier cambio futuro debe realizarse mediante
+una migración explícita. En local se mantiene `always`.
 
 ### Correo: diferencia entre la rama actual y la rama del profesor
 

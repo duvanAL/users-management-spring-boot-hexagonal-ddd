@@ -75,6 +75,8 @@ public class DataSourceSpringConfig {
     hikariConfig.setMaximumPoolSize(maximumPoolSize);
     hikariConfig.setMinimumIdle(minimumIdle);
     hikariConfig.setConnectionTimeout(connectionTimeoutMs);
+    // Let the API start while an external free-tier database is waking up.
+    hikariConfig.setInitializationFailTimeout(-1);
 
     log.info(LOG_DATASOURCE_INIT, dbHost, dbPort);
     return new HikariDataSource(hikariConfig);

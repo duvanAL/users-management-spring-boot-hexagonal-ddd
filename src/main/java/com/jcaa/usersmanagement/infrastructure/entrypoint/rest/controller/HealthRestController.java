@@ -8,6 +8,7 @@ public final class HealthRestController {
 
   private static final String STATUS_UP = "UP";
 
+  /** Process liveness endpoint; external dependency health is exposed separately by Actuator. */
   @GetMapping({"/", "/health"})
   public HealthResponse health() {
     return new HealthResponse(STATUS_UP);

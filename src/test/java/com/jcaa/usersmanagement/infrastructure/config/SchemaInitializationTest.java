@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
@@ -62,6 +63,14 @@ class SchemaInitializationTest {
       // Assert
       assertThat(context).hasNotFailed();
       verify(statement).execute(startsWith("CREATE TABLE IF NOT EXISTS users"));
+    });
+  }
+
+  @Test
+  void shouldSkipSchemaInitializationWhenDisabledForAnExistingProductionDatabase() {
+    runner.withPropertyValues("spring.sql.init.mode=never").run(context -> {
+      assertThat(context).hasNotFailed();
+      verifyNoInteractions(dataSource);
     });
   }
 
