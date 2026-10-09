@@ -13,6 +13,7 @@ import com.jcaa.usersmanagement.domain.model.EmailDestinationModel;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.retry.Retry;
 import java.time.Duration;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -42,12 +43,26 @@ class BrevoEmailSenderAdapterTest {
                       "sender": {"email":"no-reply@example.com", "name":"Users API"},
                       "to": [{"email":"ada@example.com", "name":"Ada"}],
                       "subject":"Account updated",
-                      "htmlContent":"<p>Updated</p>"
+                      "htmlContent":"<p>Updated</p>",
+                      "headers":{"Idempotency-Key":"d48e20a5-1fcb-4d67-b5cc-76daf9539b05"}
                     }
                     """))
         .andRespond(withSuccess());
 
-    adapter(builder).send(destination());
+    adapter(builder).send(destination(), "d48e20a5-1fcb-4d67-b5cc-76daf9539b05");
+
+    server.verify();
+  }
+
+  @Test
+  void shouldTreatBrevoDuplicateIdempotencyResponseAsAlreadyDelivered() {
+    final RestClient.Builder builder = RestClient.builder().baseUrl(BASE_URL);
+    final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+    server
+        .expect(requestTo(BASE_URL + "/v3/smtp/email"))
+        .andRespond(withStatus(HttpStatus.BAD_REQUEST).body("{\"code\":\"duplicate_parameter\"}"));
+
+    adapter(builder).send(destination(), UUID.randomUUID().toString());
 
     server.verify();
   }

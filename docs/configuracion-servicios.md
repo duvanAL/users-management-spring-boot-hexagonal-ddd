@@ -125,14 +125,30 @@ Supabase antes de desplegar una revisión con Kafka activado.
 
 Los mensajes de solicitud contienen correo, nombre y contenido HTML, por lo que
 los topics deben permanecer privados y protegidos por TLS/ACLs; la retención de
-72 horas limita el tiempo de exposición. El envío es de tipo *at least once*: si
-Brevo acepta el mensaje pero el worker falla antes de publicar el resultado, una
-redelivery puede producir un correo duplicado. La publicación del API es *at
-least once*: si el broker acepta un mensaje pero se pierde la confirmación, el
-outbox puede publicarlo nuevamente con el mismo `notification_id`. El worker
-debe tolerar duplicados. El outbox guarda correo, nombre y contenido HTML; las
-filas se eliminan tras confirmación Kafka y los reintentos pendientes deben
-monitorearse y purgarse conforme a una política de retención adecuada.
+72 horas limita el tiempo de exposición. El envío de Kafka sigue siendo *at
+least once*: si Brevo acepta el mensaje pero el worker falla antes de publicar
+el resultado, Kafka puede entregarlo otra vez. El worker reutiliza
+`notification_id` como `Idempotency-Key` de Brevo; una respuesta
+`duplicate_parameter` se trata como envío ya aceptado. Esta protección depende
+de la ventana temporal de idempotencia de Brevo y no equivale a una garantía
+permanente de exactamente-una-vez. La publicación del API también es *at least
+once*: si Kafka acepta un mensaje pero se pierde la confirmación, el outbox
+puede publicarlo de nuevo con el mismo `notification_id`.
+
+El listener usa `ErrorHandlingDeserializer`: los mensajes que no se pueden
+convertir a JSON pasan a `user.notification.dlq` como un sobre con topic,
+partición, offset y código de error. No se copia el payload al sobre porque
+puede contener datos personales; para diagnosticarlo, consultar el registro
+original mientras siga dentro de la retención Kafka.
+
+Si se desactiva Kafka, el envío directo de la API se agenda después del commit y
+se ejecuta en un hilo acotado, evitando mantener abierta la transacción de base
+de datos durante llamadas HTTP. Ese camino directo no tiene outbox durable: una
+caída del proceso o saturación de su cola puede dejar el correo sin enviar; en
+producción se recomienda el flujo Kafka/outbox. El outbox guarda correo, nombre
+y contenido HTML; las filas se eliminan tras confirmación Kafka y los reintentos
+pendientes deben monitorearse y purgarse conforme a una política de retención
+adecuada.
 
 ### Aiven Valkey
 

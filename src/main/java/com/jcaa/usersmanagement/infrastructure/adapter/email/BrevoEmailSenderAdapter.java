@@ -7,6 +7,8 @@ import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.retry.Retry;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -38,6 +40,11 @@ public final class BrevoEmailSenderAdapter implements EmailSenderPort {
 
   @Override
   public void send(final EmailDestinationModel destination) {
+    send(destination, UUID.randomUUID().toString());
+  }
+
+  @Override
+  public void send(final EmailDestinationModel destination, final String idempotencyKey) {
     final BrevoEmailRequest request =
         new BrevoEmailRequest(
             new BrevoEmailRequest.Sender(config.fromAddress(), config.fromName()),
@@ -45,10 +52,21 @@ public final class BrevoEmailSenderAdapter implements EmailSenderPort {
                 new BrevoEmailRequest.Recipient(
                     destination.getDestinationEmail(), destination.getDestinationName())),
             destination.getSubject(),
-            destination.getBody());
+            destination.getBody(),
+            Map.of("Idempotency-Key", idempotencyKey));
     try {
       final Runnable sendRequest =
-          () -> restClient.post().uri(SEND_EMAIL_PATH).body(request).retrieve().toBodilessEntity();
+          () -> {
+            try {
+              restClient.post().uri(SEND_EMAIL_PATH).body(request).retrieve().toBodilessEntity();
+            } catch (final RestClientResponseException exception) {
+              // Brevo returns duplicate_parameter when it has already accepted this key.
+              // Treat that response as success so Kafka redelivery is acknowledged.
+              if (!isDuplicateIdempotencyKey(exception)) {
+                throw exception;
+              }
+            }
+          };
       // The breaker observes the final result after bounded retries, not every attempt.
       CircuitBreaker.decorateRunnable(circuitBreaker, Retry.decorateRunnable(retry, sendRequest))
           .run();
@@ -62,5 +80,10 @@ public final class BrevoEmailSenderAdapter implements EmailSenderPort {
       throw EmailSenderException.becauseSendFailed(
           new IllegalStateException("Brevo API request failed: " + failure + "."));
     }
+  }
+
+  private static boolean isDuplicateIdempotencyKey(final RestClientResponseException exception) {
+    return exception.getStatusCode().value() == 400
+        && exception.getResponseBodyAsString().contains("duplicate_parameter");
   }
 }
