@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.jcaa.usersmanagement.application.port.out.EmailSenderPort;
 import com.jcaa.usersmanagement.domain.model.EmailDestinationModel;
+import com.jcaa.usersmanagement.infrastructure.adapter.email.AfterCommitEmailSenderAdapter;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.BrevoEmailSenderAdapter;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.KafkaEmailSenderAdapter;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.NoOpEmailSenderAdapter;
@@ -51,7 +52,7 @@ class SmtpSpringConfigTest {
             context -> {
               assertThat(context).hasNotFailed().hasSingleBean(EmailSenderPort.class);
               assertThat(context.getBean(EmailSenderPort.class))
-                  .isInstanceOf(BrevoEmailSenderAdapter.class);
+                  .isInstanceOf(AfterCommitEmailSenderAdapter.class);
             });
   }
 

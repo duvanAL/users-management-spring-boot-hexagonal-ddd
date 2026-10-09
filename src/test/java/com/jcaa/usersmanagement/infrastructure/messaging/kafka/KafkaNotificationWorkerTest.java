@@ -32,7 +32,8 @@ class KafkaNotificationWorkerTest {
 
     worker.onRequest(request);
 
-    verify(emailSenderPort).send(request.toEmailDestination());
+    verify(emailSenderPort)
+        .send(request.toEmailDestination(), request.notificationId().toString());
     final ArgumentCaptor<NotificationResultMessage> resultCaptor =
         ArgumentCaptor.forClass(NotificationResultMessage.class);
     verify(publisher)
@@ -52,7 +53,7 @@ class KafkaNotificationWorkerTest {
     final NotificationRequestMessage request = request();
     doThrow(EmailSenderException.becauseSendFailed(new IllegalStateException("private provider data")))
         .when(emailSenderPort)
-        .send(any());
+        .send(any(), any());
 
     worker.onRequest(request);
 

@@ -3,6 +3,7 @@ package com.jcaa.usersmanagement.infrastructure.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jcaa.usersmanagement.infrastructure.messaging.kafka.KafkaMessagePublisher;
 import com.jcaa.usersmanagement.infrastructure.messaging.kafka.KafkaNotificationProperties;
+import com.jcaa.usersmanagement.infrastructure.messaging.kafka.MalformedNotificationDeadLetterMessage;
 import com.jcaa.usersmanagement.infrastructure.messaging.kafka.NotificationDeadLetterMessage;
 import com.jcaa.usersmanagement.infrastructure.messaging.kafka.NotificationRequestMessage;
 import com.jcaa.usersmanagement.infrastructure.messaging.kafka.NotificationResultMessage;
@@ -29,6 +30,7 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 
@@ -75,9 +77,12 @@ public class KafkaMessagingConfiguration {
             ? properties.notifyGroupId()
             : properties.usersGroupId();
     final Map<String, Object> config = consumerProperties(properties, groupId);
-    final JsonDeserializer<NotificationRequestMessage> valueDeserializer =
+    final JsonDeserializer<NotificationRequestMessage> delegateDeserializer =
         new JsonDeserializer<>(NotificationRequestMessage.class, objectMapper);
-    valueDeserializer.addTrustedPackages("com.jcaa.usersmanagement.infrastructure.messaging.kafka");
+    delegateDeserializer.addTrustedPackages(
+        "com.jcaa.usersmanagement.infrastructure.messaging.kafka");
+    final ErrorHandlingDeserializer<NotificationRequestMessage> valueDeserializer =
+        new ErrorHandlingDeserializer<>(delegateDeserializer);
     final DefaultKafkaConsumerFactory<String, NotificationRequestMessage> consumerFactory =
         new DefaultKafkaConsumerFactory<>(config, new StringDeserializer(), valueDeserializer);
     final ConcurrentKafkaListenerContainerFactory<String, NotificationRequestMessage> factory =
@@ -86,22 +91,39 @@ public class KafkaMessagingConfiguration {
     factory.setAutoStartup(listenerAutoStartup);
     if ("notification-worker".equalsIgnoreCase(runtimeRole)) {
       final ConsumerRecordRecoverer recoverer =
-          (record, exception) -> {
-            if (!(record.value() instanceof NotificationRequestMessage request)) {
-              throw new IllegalStateException("Unable to recover malformed Kafka notification.");
-            }
-            publisher.publish(
-                properties.deadLetterTopic(),
-                request.notificationId().toString(),
-                new NotificationDeadLetterMessage(
-                    NotificationRequestMessage.CURRENT_SCHEMA_VERSION,
-                    request,
-                    "PROCESSING_RETRIES_EXHAUSTED",
-                    Instant.now()));
-          };
+          notificationRequestRecoverer(publisher, properties);
       factory.setCommonErrorHandler(new DefaultErrorHandler(recoverer, new FixedBackOff(1000L, 2L)));
     }
     return factory;
+  }
+
+  ConsumerRecordRecoverer notificationRequestRecoverer(
+      final KafkaMessagePublisher publisher, final KafkaNotificationProperties properties) {
+    return (record, exception) -> {
+      if (record.value() instanceof NotificationRequestMessage request) {
+        publisher.publish(
+            properties.deadLetterTopic(),
+            request.notificationId().toString(),
+            new NotificationDeadLetterMessage(
+                NotificationRequestMessage.CURRENT_SCHEMA_VERSION,
+                request,
+                "PROCESSING_RETRIES_EXHAUSTED",
+                Instant.now()));
+        return;
+      }
+
+      // Do not copy raw Kafka bytes or exception messages; they can contain email/HTML/PII.
+      final MalformedNotificationDeadLetterMessage deadLetter =
+          new MalformedNotificationDeadLetterMessage(
+              MalformedNotificationDeadLetterMessage.CURRENT_SCHEMA_VERSION,
+              record.topic(),
+              record.partition(),
+              record.offset(),
+              "MALFORMED_NOTIFICATION",
+              Instant.now());
+      publisher.publish(
+          properties.deadLetterTopic(), record.topic() + ":" + record.offset(), deadLetter);
+    };
   }
 
   @Bean("notificationResultListenerContainerFactory")

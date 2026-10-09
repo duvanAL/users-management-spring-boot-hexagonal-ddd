@@ -1,6 +1,7 @@
 package com.jcaa.usersmanagement.infrastructure.config;
 
 import com.jcaa.usersmanagement.application.port.out.EmailSenderPort;
+import com.jcaa.usersmanagement.infrastructure.adapter.email.AfterCommitEmailSenderAdapter;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.BrevoConfig;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.BrevoEmailSenderAdapter;
 import com.jcaa.usersmanagement.infrastructure.adapter.email.BrevoResilience;
@@ -18,10 +19,11 @@ import java.time.Duration;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.web.client.RestClient;
 
 @Configuration
@@ -147,9 +149,22 @@ public class SmtpSpringConfig {
   }
 
   @Bean
+  public ThreadPoolTaskExecutor directEmailExecutor() {
+    final ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+    executor.setCorePoolSize(1);
+    executor.setMaxPoolSize(1);
+    executor.setQueueCapacity(100);
+    executor.setThreadNamePrefix("direct-email-");
+    executor.setWaitForTasksToCompleteOnShutdown(true);
+    executor.setAwaitTerminationSeconds(10);
+    return executor;
+  }
+
+  @Bean
   public EmailSenderPort emailSender(
       final SmtpConfig config,
-      final ObjectProvider<EmailOutboxRepository> outboxRepositoryProvider) {
+      final ObjectProvider<EmailOutboxRepository> outboxRepositoryProvider,
+      final ThreadPoolTaskExecutor directEmailExecutor) {
     if (kafkaEnabled && "api".equalsIgnoreCase(runtimeRole)) {
       return new KafkaEmailSenderAdapter(outboxRepositoryProvider.getObject());
     }
@@ -163,7 +178,10 @@ public class SmtpSpringConfig {
     if (!emailEnabled) {
       return new NoOpEmailSenderAdapter();
     }
-    return configuredDirectEmailSender(config);
+    final EmailSenderPort directSender = configuredDirectEmailSender(config);
+    return "api".equalsIgnoreCase(runtimeRole)
+        ? new AfterCommitEmailSenderAdapter(directSender, directEmailExecutor)
+        : directSender;
   }
 
   private EmailSenderPort configuredDirectEmailSender(final SmtpConfig config) {

@@ -33,7 +33,8 @@ public class KafkaNotificationWorker {
 
     NotificationResultMessage result;
     try {
-      emailSenderPort.send(request.toEmailDestination());
+      emailSenderPort.send(
+          request.toEmailDestination(), request.notificationId().toString());
       result = result(request, NotificationResultMessage.Status.SENT, null);
     } catch (final RuntimeException exception) {
       log.warn("No se pudo entregar la notificación. id={}", request.notificationId());
