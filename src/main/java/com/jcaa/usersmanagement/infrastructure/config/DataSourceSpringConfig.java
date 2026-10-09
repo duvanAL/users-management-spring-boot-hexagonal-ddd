@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.datasource.TransactionAwareDataSourceProxy;
 
 @Slf4j
 @Configuration(proxyBeanMethods = false)
@@ -75,9 +76,11 @@ public class DataSourceSpringConfig {
     hikariConfig.setMaximumPoolSize(maximumPoolSize);
     hikariConfig.setMinimumIdle(minimumIdle);
     hikariConfig.setConnectionTimeout(connectionTimeoutMs);
+    // Let the API start while an external free-tier database is waking up.
+    hikariConfig.setInitializationFailTimeout(-1);
 
     log.info(LOG_DATASOURCE_INIT, dbHost, dbPort);
-    return new HikariDataSource(hikariConfig);
+    return new TransactionAwareDataSourceProxy(new HikariDataSource(hikariConfig));
   }
 }
 

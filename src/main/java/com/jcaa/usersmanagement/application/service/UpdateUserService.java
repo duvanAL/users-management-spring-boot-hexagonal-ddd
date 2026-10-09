@@ -16,6 +16,7 @@ import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Set;
 
@@ -30,6 +31,7 @@ public class UpdateUserService implements UpdateUserUseCase {
   private final Validator validator;
 
   @Override
+  @Transactional
   public UserModel execute(final UpdateUserCommand command) {
     validateCommand(command);
 
