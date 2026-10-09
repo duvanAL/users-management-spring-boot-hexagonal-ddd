@@ -53,7 +53,7 @@ public final class BrevoEmailSenderAdapter implements EmailSenderPort {
                     destination.getDestinationEmail(), destination.getDestinationName())),
             destination.getSubject(),
             destination.getBody(),
-            Map.of("Idempotency-Key", idempotencyKey));
+            Map.of("idempotencyKey", idempotencyKey));
     try {
       final Runnable sendRequest =
           () -> {

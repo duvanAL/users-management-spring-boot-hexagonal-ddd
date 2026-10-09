@@ -44,7 +44,7 @@ class BrevoEmailSenderAdapterTest {
                       "to": [{"email":"ada@example.com", "name":"Ada"}],
                       "subject":"Account updated",
                       "htmlContent":"<p>Updated</p>",
-                      "headers":{"Idempotency-Key":"d48e20a5-1fcb-4d67-b5cc-76daf9539b05"}
+                      "headers":{"idempotencyKey":"d48e20a5-1fcb-4d67-b5cc-76daf9539b05"}
                     }
                     """))
         .andRespond(withSuccess());

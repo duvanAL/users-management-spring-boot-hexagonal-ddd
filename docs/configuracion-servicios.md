@@ -128,7 +128,7 @@ los topics deben permanecer privados y protegidos por TLS/ACLs; la retención de
 72 horas limita el tiempo de exposición. El envío de Kafka sigue siendo *at
 least once*: si Brevo acepta el mensaje pero el worker falla antes de publicar
 el resultado, Kafka puede entregarlo otra vez. El worker reutiliza
-`notification_id` como `Idempotency-Key` de Brevo; una respuesta
+`notification_id` como `headers.idempotencyKey` de Brevo; una respuesta
 `duplicate_parameter` se trata como envío ya aceptado. Esta protección depende
 de la ventana temporal de idempotencia de Brevo y no equivale a una garantía
 permanente de exactamente-una-vez. La publicación del API también es *at least
