@@ -16,7 +16,7 @@
 
   <properties>
     <!-- El parent de Spring Boot usa java.version para configurar el compilador -->
-    <java.version>17</java.version>
+    <java.version>21</java.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <!-- Versiones de dependencias no gestionadas por el BOM de Spring Boot -->
     <lombok.version>1.18.36</lombok.version>
@@ -215,6 +215,9 @@
               <version>${lombok.version}</version>
             </path>
           </annotationProcessorPaths>
+            <source>21</source>
+            <target>21</target>
+            <compilerArgs>--enable-preview</compilerArgs>
         </configuration>
       </plugin>
 

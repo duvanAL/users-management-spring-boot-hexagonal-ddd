@@ -95,7 +95,12 @@ public class UserRepositoryPostgres
     }
   }
 
-  @Override
+    @Override
+    public <T> ScopedValue<T> getUserById(String userId) {
+        return null;
+    }
+
+    @Override
   public Optional<UserModel> getByEmail(final UserEmail email) {
     try (final Connection connection = dataSource.getConnection();
          final PreparedStatement statement = connection.prepareStatement(SQL_SELECT_BY_EMAIL)) {
