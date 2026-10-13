@@ -47,7 +47,7 @@ class NotificationWorkerApplicationTest {
     runner.run(
         context -> {
           assertThat(context).hasNotFailed().hasSingleBean(KafkaNotificationWorker.class);
-          assertThat(context).hasSingleBean(EmailSenderPort.class);
+          assertThat(context).hasBean("notificationWorkerEmailSender");
           assertThat(context.getBean(EmailSenderPort.class))
               .isInstanceOf(BrevoEmailSenderAdapter.class);
           assertThat(context).doesNotHaveBean(DataSource.class);

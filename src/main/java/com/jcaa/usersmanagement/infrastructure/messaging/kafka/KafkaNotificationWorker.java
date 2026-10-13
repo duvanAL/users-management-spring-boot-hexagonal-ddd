@@ -2,18 +2,19 @@ package com.jcaa.usersmanagement.infrastructure.messaging.kafka;
 
 import com.jcaa.usersmanagement.application.port.out.EmailSenderPort;
 import java.time.Instant;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
 /** Worker-side consumer that sends queued emails and publishes outcomes. */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 @ConditionalOnExpression(
-    "'${app.kafka.enabled:false}' == 'true' and '${app.runtime.role:api}' == 'notification-worker'")
+    "'${app.kafka.enabled:false}' == 'true' and '${app.email.enabled:false}' == 'true' and "
+        + "('${app.runtime.role:api}' == 'notification-worker' or "
+        + "('${app.runtime.role:api}' == 'api' and '${app.kafka.in-process-worker-enabled:false}' == 'true'))")
 public class KafkaNotificationWorker {
 
   private static final String FAILURE_CODE = "EMAIL_DELIVERY_FAILED";
@@ -21,6 +22,15 @@ public class KafkaNotificationWorker {
   private final EmailSenderPort emailSenderPort;
   private final KafkaMessagePublisher publisher;
   private final KafkaNotificationProperties properties;
+
+  public KafkaNotificationWorker(
+      @Qualifier("notificationWorkerEmailSender") final EmailSenderPort emailSenderPort,
+      final KafkaMessagePublisher publisher,
+      final KafkaNotificationProperties properties) {
+    this.emailSenderPort = emailSenderPort;
+    this.publisher = publisher;
+    this.properties = properties;
+  }
 
   @KafkaListener(
       topics = "${app.kafka.request-topic}",

@@ -71,9 +71,11 @@ public class KafkaMessagingConfiguration {
           final ObjectMapper objectMapper,
           final KafkaMessagePublisher publisher,
           @Value("${app.runtime.role:api}") final String runtimeRole,
+          @Value("${app.kafka.in-process-worker-enabled:false}") final boolean inProcessWorkerEnabled,
           @Value("${app.kafka.listener-auto-startup:true}") final boolean listenerAutoStartup) {
     final String groupId =
         "notification-worker".equalsIgnoreCase(runtimeRole)
+                || ("api".equalsIgnoreCase(runtimeRole) && inProcessWorkerEnabled)
             ? properties.notifyGroupId()
             : properties.usersGroupId();
     final Map<String, Object> config = consumerProperties(properties, groupId);
@@ -89,7 +91,8 @@ public class KafkaMessagingConfiguration {
         new ConcurrentKafkaListenerContainerFactory<>();
     factory.setConsumerFactory(consumerFactory);
     factory.setAutoStartup(listenerAutoStartup);
-    if ("notification-worker".equalsIgnoreCase(runtimeRole)) {
+    if ("notification-worker".equalsIgnoreCase(runtimeRole)
+        || ("api".equalsIgnoreCase(runtimeRole) && inProcessWorkerEnabled)) {
       final ConsumerRecordRecoverer recoverer =
           notificationRequestRecoverer(publisher, properties);
       factory.setCommonErrorHandler(new DefaultErrorHandler(recoverer, new FixedBackOff(1000L, 2L)));
