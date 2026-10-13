@@ -13,6 +13,7 @@ import com.jcaa.usersmanagement.application.service.dto.command.LoginCommand;
 import com.jcaa.usersmanagement.application.service.dto.query.GetUserByIdQuery;
 import com.jcaa.usersmanagement.domain.model.UserModel;
 import com.jcaa.usersmanagement.domain.enums.UserRole;
+import com.jcaa.usersmanagement.infrastructure.cache.CacheConfig;
 import com.jcaa.usersmanagement.infrastructure.entrypoint.rest.dto.request.CreateUserRestRequest;
 import com.jcaa.usersmanagement.infrastructure.entrypoint.rest.dto.request.UpdateUserRestRequest;
 import com.jcaa.usersmanagement.infrastructure.entrypoint.rest.dto.request.LoginRestRequest;
@@ -21,6 +22,9 @@ import com.jcaa.usersmanagement.infrastructure.entrypoint.rest.mapper.UserRestMa
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -55,6 +59,7 @@ public class UserRestController implements UserRestControllerDocs {
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
+  @CacheEvict(cacheNames = CacheConfig.USERS_LIST, key = "'all'")
   public UserRestResponse create(
       @Valid @RequestBody final CreateUserRestRequest request,
       final Authentication authentication) {
@@ -80,11 +85,13 @@ public class UserRestController implements UserRestControllerDocs {
   }
 
   @GetMapping
+  @Cacheable(cacheNames = CacheConfig.USERS_LIST, key = "'all'")
   public List<UserRestResponse> getAll() {
     return UserRestMapper.toResponseList(getAllUsersUseCase.execute());
   }
 
   @GetMapping("/{id}")
+  @Cacheable(cacheNames = CacheConfig.USER_BY_ID, key = "#id")
   public UserRestResponse getById(@PathVariable final String id) {
     final GetUserByIdQuery query = UserRestMapper.toGetByIdQuery(id);
     final UserModel user = getUserByIdUseCase.execute(query);
@@ -92,6 +99,10 @@ public class UserRestController implements UserRestControllerDocs {
   }
 
   @PutMapping("/{id}")
+  @Caching(evict = {
+      @CacheEvict(cacheNames = CacheConfig.USERS_LIST, key = "'all'"),
+      @CacheEvict(cacheNames = CacheConfig.USER_BY_ID, key = "#id")
+  })
   public UserRestResponse update(
       @PathVariable final String id,
       @Valid @RequestBody final UpdateUserRestRequest request) {
@@ -102,6 +113,10 @@ public class UserRestController implements UserRestControllerDocs {
 
   @DeleteMapping("/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
+  @Caching(evict = {
+      @CacheEvict(cacheNames = CacheConfig.USERS_LIST, key = "'all'"),
+      @CacheEvict(cacheNames = CacheConfig.USER_BY_ID, key = "#id")
+  })
   public void delete(@PathVariable final String id) {
     final DeleteUserCommand command = UserRestMapper.toDeleteCommand(id);
     deleteUserUseCase.execute(command);

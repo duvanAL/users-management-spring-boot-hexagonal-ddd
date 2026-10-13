@@ -81,8 +81,30 @@ class SmtpSpringConfigTest {
             "brevo.from.address=verified@example.com")
         .run(
             context -> {
-              assertThat(context).hasNotFailed().hasSingleBean(EmailSenderPort.class);
+              assertThat(context).hasNotFailed().hasBean("notificationWorkerEmailSender");
               assertThat(context.getBean(EmailSenderPort.class))
+                  .isInstanceOf(BrevoEmailSenderAdapter.class);
+            });
+  }
+
+  @Test
+  void shouldUseDirectSenderForInProcessKafkaWorkerWithoutRecursivelyEnqueueing() {
+    runner
+        .withBean(EmailOutboxRepository.class, () -> org.mockito.Mockito.mock(EmailOutboxRepository.class))
+        .withPropertyValues(
+            "app.kafka.enabled=true",
+            "app.kafka.in-process-worker-enabled=true",
+            "app.runtime.role=api",
+            "app.email.enabled=true",
+            "app.email.provider=brevo",
+            "brevo.api-key=test-api-key",
+            "brevo.from.address=verified@example.com")
+        .run(
+            context -> {
+              assertThat(context).hasNotFailed().hasBean("notificationWorkerEmailSender");
+              assertThat(context.getBean(EmailSenderPort.class))
+                  .isInstanceOf(KafkaEmailSenderAdapter.class);
+              assertThat(context.getBean("notificationWorkerEmailSender"))
                   .isInstanceOf(BrevoEmailSenderAdapter.class);
             });
   }
