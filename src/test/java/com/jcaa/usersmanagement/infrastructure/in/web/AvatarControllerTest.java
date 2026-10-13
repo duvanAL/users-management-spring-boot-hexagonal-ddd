@@ -2,20 +2,20 @@ package com.jcaa.usersmanagement.infrastructure.in.web;
 
 import com.jcaa.usersmanagement.application.ManageAvatarUseCase;
 import com.jcaa.usersmanagement.domain.exception.UserNotFoundException;
-import org.junit.jupiter.api.Test;
 import com.jcaa.usersmanagement.infrastructure.config.WebCorsConfig;
-import com.jcaa.usersmanagement.infrastructure.security.JwtTokenService;
-import com.jcaa.usersmanagement.infrastructure.security.JwtAuthenticationFilter;
-import com.jcaa.usersmanagement.infrastructure.security.SecurityConfig;
 import com.jcaa.usersmanagement.infrastructure.security.RestAccessDeniedHandler;
 import com.jcaa.usersmanagement.infrastructure.security.RestAuthenticationEntryPoint;
+import com.jcaa.usersmanagement.infrastructure.security.SecurityConfig;
+import com.jcaa.usersmanagement.infrastructure.security.JwtAuthenticationFilter;
+import com.jcaa.usersmanagement.infrastructure.security.JwtTokenService;
+import java.util.Base64;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.MediaType;
 import org.springframework.http.HttpMethod;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -26,10 +26,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-
-// Ajusta el import a tu ManageAvatarUseCase real
-// import com.tuproyecto.application.port.in.ManageAvatarUseCase;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(value = AvatarController.class, properties = {
         "app.storage.supabase.enabled=true",
@@ -45,6 +43,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 public class AvatarControllerTest {
 
+    private static final byte[] VALID_PNG = Base64.getDecoder().decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/XWQAAAAASUVORK5CYII=");
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -58,7 +59,7 @@ public class AvatarControllerTest {
     @Test
     @WithMockUser(roles = "ADMIN") // Simulamos permiso ADMIN
     void uploadAvatar_Success() throws Exception {
-        MockMultipartFile file = new MockMultipartFile("file", "avatar.png", "image/png", "dummy image content".getBytes());
+        MockMultipartFile file = new MockMultipartFile("file", "avatar.png", "image/png", VALID_PNG);
 
         mockMvc.perform(multipart(HttpMethod.PUT, "/api/users/1/avatar")
                         .file(file)
@@ -79,6 +80,32 @@ public class AvatarControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void uploadAvatar_RejectsBytesThatAreNotAnImage() throws Exception {
+        MockMultipartFile file = new MockMultipartFile("file", "avatar.png", "image/png", "not an image".getBytes());
+
+        mockMvc.perform(multipart(HttpMethod.PUT, "/api/users/1/avatar")
+                        .file(file)
+                        .with(csrf()))
+                .andExpect(status().isBadRequest());
+
+        Mockito.verifyNoInteractions(manageAvatarUseCase);
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void uploadAvatar_RejectsMismatchBetweenMimeAndImageFormat() throws Exception {
+        MockMultipartFile file = new MockMultipartFile("file", "avatar.jpg", "image/jpeg", VALID_PNG);
+
+        mockMvc.perform(multipart(HttpMethod.PUT, "/api/users/1/avatar")
+                        .file(file)
+                        .with(csrf()))
+                .andExpect(status().isBadRequest());
+
+        Mockito.verifyNoInteractions(manageAvatarUseCase);
+    }
+
     // 3. Prueba de tamaño inválido (> 2MB)
     @Test
     @WithMockUser(roles = "ADMIN")
@@ -97,7 +124,7 @@ public class AvatarControllerTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void uploadAvatar_UserNotFound() throws Exception {
-        MockMultipartFile file = new MockMultipartFile("file", "avatar.png", "image/png", "dummy image content".getBytes());
+        MockMultipartFile file = new MockMultipartFile("file", "avatar.png", "image/png", VALID_PNG);
 
         // Configuramos el mock para que lance la excepción esperada
         Mockito.doThrow(UserNotFoundException.becauseIdWasNotFound("999"))
@@ -113,7 +140,7 @@ public class AvatarControllerTest {
     @Test
     @WithMockUser(roles = "USER") // Un rol sin permisos
     void uploadAvatar_Forbidden() throws Exception {
-        MockMultipartFile file = new MockMultipartFile("file", "avatar.png", "image/png", "dummy image content".getBytes());
+        MockMultipartFile file = new MockMultipartFile("file", "avatar.png", "image/png", VALID_PNG);
 
         mockMvc.perform(multipart(HttpMethod.PUT, "/api/users/1/avatar")
                         .file(file)
@@ -124,7 +151,7 @@ public class AvatarControllerTest {
     // 6. Prueba de permisos 401 (Sin autenticación)
     @Test
     void uploadAvatar_Unauthorized() throws Exception {
-        MockMultipartFile file = new MockMultipartFile("file", "avatar.png", "image/png", "dummy image content".getBytes());
+        MockMultipartFile file = new MockMultipartFile("file", "avatar.png", "image/png", VALID_PNG);
 
         mockMvc.perform(multipart("/api/users/1/avatar")
                         .file(file)
