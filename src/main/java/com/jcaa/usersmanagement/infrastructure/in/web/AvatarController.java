@@ -36,7 +36,7 @@ public class AvatarController {
         this.manageAvatarUseCaseProvider = manageAvatarUseCaseProvider;
     }
 
-    @PutMapping("/{id}/avatar")
+    @PutMapping(value = "/{id}/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> uploadAvatar(
             @PathVariable final String id, @RequestParam("file") final MultipartFile file) {
