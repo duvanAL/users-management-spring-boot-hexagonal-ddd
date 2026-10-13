@@ -192,6 +192,8 @@ está deshabilitado; no expone la clave de servicio.
 | `SUPABASE_URL` | Proyecto de Supabase | Configuración privada |
 | `SUPABASE_STORAGE_BUCKET` | `users-management-bucket` | No es secreto |
 | `SUPABASE_SERVICE_ROLE_KEY` | Acceso de servidor al Storage | Secreto de alto privilegio; solo en Render/entorno local privado |
+| `SUPABASE_CONNECT_TIMEOUT_MS` | Tiempo máximo para establecer conexión (por defecto 3000 ms) | No es secreto |
+| `SUPABASE_READ_TIMEOUT_MS` | Tiempo máximo esperando respuesta (por defecto 5000 ms) | No es secreto |
 
 No hacer público el bucket ni crear políticas permisivas. La clave `service_role`
 nunca debe exponerse a Swagger UI, Vercel ni al navegador. Probar primero con
