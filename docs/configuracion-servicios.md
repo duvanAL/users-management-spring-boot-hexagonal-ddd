@@ -84,13 +84,16 @@ archivo de entorno hasta que la implementación y sus pruebas los confirmen.
 
 ### Aiven Kafka
 
-La API y el worker usan procesos y credenciales separados. Los usuarios de
-servicio y las ACLs deben estar limitados a los topics que les corresponden.
+El worker puede ejecutarse en un proceso separado o dentro del proceso API. La
+segunda modalidad permite la demostración con el único servicio web gratuito de
+Render; la API consume solicitudes cuando está activa y Kafka conserva mensajes
+mientras Render duerme. No promete entrega inmediata mientras el proceso duerme.
 No compartir credenciales por chat ni subirlas al repositorio.
 
 | Variable | Uso | Tratamiento |
 | --- | --- | --- |
 | `APP_KAFKA_ENABLED` | Activa productores y consumidores Kafka | No es secreto; por defecto `false` |
+| `APP_KAFKA_IN_PROCESS_WORKER_ENABLED` | En modo `api`, activa también el consumidor de solicitudes | No es secreto; por defecto `false`; requiere correo y Kafka habilitados |
 | `APP_RUNTIME_ROLE` | `api` o `notification-worker` | No es secreto |
 | `KAFKA_BOOTSTRAP_SERVERS` | Host y puerto TLS de Aiven, sin `https://` | Configuración privada |
 | `KAFKA_SECURITY_PROTOCOL` | `SASL_SSL` | No es secreto |
@@ -103,7 +106,7 @@ No compartir credenciales por chat ni subirlas al repositorio.
 | `KAFKA_OUTBOX_POLL_INTERVAL_MS` | Intervalo de sondeo del outbox en la API | No es secreto; 5000 ms por defecto |
 | `KAFKA_LISTENER_AUTO_STARTUP` | Permite pausar el consumo sin deshabilitar la configuración | No es secreto; por defecto `true` |
 
-Flujo: el API envía `user.notification.requested` y consume
+Flujo separado: el API envía `user.notification.requested` y consume
 `user.notification.result`; el worker consume solicitudes, envía correos mediante
 el proveedor configurado, publica resultados y coloca fallos de entrega en
 `user.notification.dlq`. En la API, `APP_KAFKA_ENABLED=true` y
@@ -112,6 +115,16 @@ el proveedor configurado, publica resultados y coloca fallos de entrega en
 `APP_EMAIL_PROVIDER=brevo`. El worker arranca un contexto reducido y no requiere
 conectarse a PostgreSQL. No configurar `KAFKA_USERNAME`/`KAFKA_PASSWORD` iguales
 entre ambos servicios.
+
+Para Render Free no se declara un Background Worker (ese tipo requiere un plan
+de pago). En su lugar, el modo de proceso único usa `APP_RUNTIME_ROLE=api`,
+`APP_KAFKA_ENABLED=true`, `APP_KAFKA_IN_PROCESS_WORKER_ENABLED=true`,
+`APP_EMAIL_ENABLED=true` y `APP_EMAIL_PROVIDER=brevo`. La identidad Kafka de la
+API debe tener ACLs para producir en `user.notification.requested`, consumir
+solicitudes en el grupo `notify-service`, producir en `user.notification.result`
+y `user.notification.dlq`, y consumir resultados en el grupo `users-api`.
+Mantener la contraseña como secreto. Si no se configuran estas ACLs o alguna
+credencial, dejar los interruptores desactivados hasta corregirlo.
 
 La API persiste ahora cada solicitud de correo en `email_notification_outbox`
 dentro de la misma transacción PostgreSQL que crea o actualiza al usuario. Un
@@ -152,8 +165,10 @@ adecuada.
 
 ### Aiven Valkey
 
-El servicio está creado con conexión TLS (`rediss`). La aplicación todavía no
-tiene caché distribuida integrada.
+El servicio está creado con conexión TLS (`rediss`). La rama de integración añade
+caché distribuida de las respuestas de lista y detalle de usuarios. Si Valkey no
+está disponible, la API registra el tipo de fallo sin datos sensibles y continúa
+consultando PostgreSQL.
 
 | Variable propuesta | Uso | Tratamiento |
 | --- | --- | --- |
@@ -167,19 +182,23 @@ contraseñas, tokens JWT ni secretos de usuario.
 
 ### Supabase Storage
 
-El bucket `users-management-bucket` existe y es privado. Aún no hay flujo de
-carga/descarga ni políticas de acceso definidos en la API.
+El bucket `users-management-bucket` existe y es privado. La rama de integración
+añade carga de avatar (PNG/JPEG, máximo 2 MiB) solo para ADMIN y consulta de URL
+firmada temporal para ADMIN/REVIEWER. El endpoint responde 503 cuando Storage
+está deshabilitado; no expone la clave de servicio.
 
 | Variable propuesta | Uso | Tratamiento |
 | --- | --- | --- |
 | `SUPABASE_URL` | Proyecto de Supabase | Configuración privada |
 | `SUPABASE_STORAGE_BUCKET` | `users-management-bucket` | No es secreto |
 | `SUPABASE_SERVICE_ROLE_KEY` | Acceso de servidor al Storage | Secreto de alto privilegio; solo en Render/entorno local privado |
+| `SUPABASE_CONNECT_TIMEOUT_MS` | Tiempo máximo para establecer conexión (por defecto 3000 ms) | No es secreto |
+| `SUPABASE_READ_TIMEOUT_MS` | Tiempo máximo esperando respuesta (por defecto 5000 ms) | No es secreto |
 
-No hacer público el bucket ni crear políticas permisivas todavía. Primero se
-deben definir tipos y tamaños de archivo, propietario del archivo, autorización
-de cada endpoint y estrategia de borrado. La clave `service_role` nunca debe
-exponerse a Swagger UI, Vercel ni al navegador.
+No hacer público el bucket ni crear políticas permisivas. La clave `service_role`
+nunca debe exponerse a Swagger UI, Vercel ni al navegador. Probar primero con
+`SUPABASE_STORAGE_ENABLED=false`; activarlo solo tras guardar la URL y la clave
+privada en Render.
 
 ## Reglas para guardar configuración
 
@@ -196,8 +215,9 @@ exponerse a Swagger UI, Vercel ni al navegador.
 ## Estado de este inventario
 
 Brevo REST está disponible como adaptador seleccionable, con reintentos acotados
-y circuit breaker. Kafka tiene productores/consumidores para la API y un worker
-de notificaciones en un proceso separado; ambos siguen desactivados por defecto
-y la configuración de Render no se ha cambiado. Valkey y Storage aún no están
-integrados. Se mantendrá un servicio a la vez y se actualizará este inventario
-con cada cambio correspondiente.
+y circuit breaker. Kafka tiene outbox transaccional, worker separado y opción de
+worker dentro de la API para despliegue gratuito; siguen desactivados por
+defecto. Valkey y Supabase Storage están integrados de forma opcional y también
+siguen desactivados por defecto. Render define los nombres de sus variables, pero
+los secretos/ACLs externos deben configurarse en el panel antes de activar los
+servicios. Las pruebas no se conectan a proveedores reales.

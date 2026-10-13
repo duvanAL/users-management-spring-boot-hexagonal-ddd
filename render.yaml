@@ -41,7 +41,45 @@ services:
       - key: APP_EMAIL_ENABLED
         value: "false"
       - key: APP_EMAIL_PROVIDER
-        value: gmail
+        value: brevo
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_FROM_ADDRESS
+        sync: false
+      - key: BREVO_FROM_NAME
+        value: Gestion de Usuarios
+      - key: APP_KAFKA_ENABLED
+        value: "false"
+      - key: APP_KAFKA_IN_PROCESS_WORKER_ENABLED
+        value: "false"
+      - key: KAFKA_BOOTSTRAP_SERVERS
+        sync: false
+      - key: KAFKA_USERNAME
+        sync: false
+      - key: KAFKA_PASSWORD
+        sync: false
+      - key: SUPABASE_STORAGE_ENABLED
+        value: "false"
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_STORAGE_BUCKET
+        value: users-management-bucket
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: APP_CACHE_ENABLED
+        value: "false"
+      - key: APP_CACHE_TTL_SECONDS
+        value: "300"
+      - key: VALKEY_HOST
+        sync: false
+      - key: VALKEY_PORT
+        value: "10274"
+      - key: VALKEY_USERNAME
+        value: default
+      - key: VALKEY_PASSWORD
+        sync: false
+      - key: VALKEY_SSL_ENABLED
+        value: "true"
       - key: GMAIL_CLIENT_ID
         sync: false
       - key: GMAIL_CLIENT_SECRET

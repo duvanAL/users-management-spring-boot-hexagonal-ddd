@@ -18,6 +18,8 @@ import io.github.resilience4j.retry.Retry;
 import java.time.Duration;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpHeaders;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -160,7 +162,16 @@ public class SmtpSpringConfig {
     return executor;
   }
 
+  /** Direct sender dedicated to the Kafka consumer, separate from the API's outbox sender. */
+  @Bean("notificationWorkerEmailSender")
+  @ConditionalOnExpression(
+      "'${app.kafka.enabled:false}' == 'true' and '${app.email.enabled:false}' == 'true'")
+  public EmailSenderPort notificationWorkerEmailSender(final SmtpConfig config) {
+    return configuredDirectEmailSender(config);
+  }
+
   @Bean
+  @Primary
   public EmailSenderPort emailSender(
       final SmtpConfig config,
       final ObjectProvider<EmailOutboxRepository> outboxRepositoryProvider,

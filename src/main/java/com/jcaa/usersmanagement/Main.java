@@ -5,7 +5,13 @@ import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-@SpringBootApplication
+@SpringBootApplication(
+    excludeName = {
+      "org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration",
+      "org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration",
+      "org.springframework.boot.actuate.autoconfigure.data.redis.RedisHealthContributorAutoConfiguration",
+      "org.springframework.boot.actuate.autoconfigure.data.redis.RedisReactiveHealthContributorAutoConfiguration"
+    })
 public class Main {
 
   public static void main(String[] args) {
