@@ -8,12 +8,14 @@ import com.jcaa.usersmanagement.infrastructure.messaging.kafka.NotificationDeadL
 import com.jcaa.usersmanagement.infrastructure.messaging.kafka.NotificationRequestMessage;
 import com.jcaa.usersmanagement.infrastructure.messaging.kafka.NotificationResultMessage;
 import java.time.Instant;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.config.SaslConfigs;
+import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Value;
@@ -39,6 +41,9 @@ import org.springframework.kafka.support.serializer.JsonSerializer;
 @EnableConfigurationProperties(KafkaNotificationProperties.class)
 @ConditionalOnProperty(prefix = "app.kafka", name = "enabled", havingValue = "true")
 public class KafkaMessagingConfiguration {
+
+  @Value("${app.kafka.ssl-trust-certificates:}")
+  private String sslTrustCertificates = "";
 
   @Bean
   ProducerFactory<String, Object> kafkaProducerFactory(
@@ -91,6 +96,7 @@ public class KafkaMessagingConfiguration {
         new ConcurrentKafkaListenerContainerFactory<>();
     factory.setConsumerFactory(consumerFactory);
     factory.setAutoStartup(listenerAutoStartup);
+    factory.getContainerProperties().setAuthExceptionRetryInterval(Duration.ofSeconds(30));
     if ("notification-worker".equalsIgnoreCase(runtimeRole)
         || ("api".equalsIgnoreCase(runtimeRole) && inProcessWorkerEnabled)) {
       final ConsumerRecordRecoverer recoverer =
@@ -146,6 +152,7 @@ public class KafkaMessagingConfiguration {
         new ConcurrentKafkaListenerContainerFactory<>();
     factory.setConsumerFactory(consumerFactory);
     factory.setAutoStartup(listenerAutoStartup);
+    factory.getContainerProperties().setAuthExceptionRetryInterval(Duration.ofSeconds(30));
     factory.setCommonErrorHandler(
         new DefaultErrorHandler(
             (record, exception) ->
@@ -157,7 +164,7 @@ public class KafkaMessagingConfiguration {
     return factory;
   }
 
-  private static Map<String, Object> commonClientProperties(
+  private Map<String, Object> commonClientProperties(
       final KafkaNotificationProperties properties) {
     final Map<String, Object> config = new HashMap<>();
     config.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, properties.bootstrapServers());
@@ -171,10 +178,15 @@ public class KafkaMessagingConfiguration {
             + escapeJaas(properties.password())
             + "\";");
     config.put("ssl.endpoint.identification.algorithm", "https");
+    if (!sslTrustCertificates.isBlank()) {
+      config.put(SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG, "PEM");
+      config.put(SslConfigs.SSL_TRUSTSTORE_CERTIFICATES_CONFIG,
+          sslTrustCertificates.replace("\\n", "\n"));
+    }
     return config;
   }
 
-  private static Map<String, Object> consumerProperties(
+  private Map<String, Object> consumerProperties(
       final KafkaNotificationProperties properties, final String groupId) {
     final Map<String, Object> config = commonClientProperties(properties);
     config.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
