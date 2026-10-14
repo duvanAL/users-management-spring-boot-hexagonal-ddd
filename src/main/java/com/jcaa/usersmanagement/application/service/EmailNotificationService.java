@@ -1,62 +1,100 @@
 package com.jcaa.usersmanagement.application.service;
 
+import com.jcaa.events.DomainEvent;
+import com.jcaa.usersmanagement.application.port.out.DomainEventPublisherPort;
 import com.jcaa.usersmanagement.application.port.out.EmailSenderPort;
 import com.jcaa.usersmanagement.domain.exception.EmailSenderException;
 import com.jcaa.usersmanagement.domain.model.EmailDestinationModel;
 import com.jcaa.usersmanagement.domain.model.UserModel;
-import java.util.Objects;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class EmailNotificationService {
 
   private static final String SUBJECT_CREATED = "Tu cuenta ha sido creada — Gestion de Usuarios";
-  private static final String SUBJECT_UPDATED  = "Tu cuenta ha sido actualizada — Gestion de Usuarios";
+  private static final String SUBJECT_UPDATED =
+      "Tu cuenta ha sido actualizada — Gestion de Usuarios";
 
-  private static final String TOKEN_NAME     = "name";
-  private static final String TOKEN_EMAIL    = "email";
-  private static final String TOKEN_ROLE     = "role";
-  private static final String TOKEN_STATUS   = "status";
+  private static final String TOKEN_NAME = "name";
+  private static final String TOKEN_EMAIL = "email";
+  private static final String TOKEN_ROLE = "role";
+  private static final String TOKEN_STATUS = "status";
 
   private static final String LOG_SEND_FAILED =
       "[EmailNotificationService] correo no enviado. Causa: {}";
 
   private final EmailSenderPort emailSenderPort;
+  private final Optional<DomainEventPublisherPort> domainEvents;
+
+  public EmailNotificationService(final EmailSenderPort emailSenderPort) {
+    this(emailSenderPort, Optional.empty());
+  }
+
+  @Autowired
+  public EmailNotificationService(
+      final EmailSenderPort emailSenderPort,
+      final Optional<DomainEventPublisherPort> domainEvents) {
+    this.emailSenderPort = emailSenderPort;
+    this.domainEvents = domainEvents;
+  }
 
   public void notifyUserCreated(final UserModel user) {
+    if (enqueueDomainEvent(user, "user.created")) return;
     final String template = loadTemplate("user-created.html");
     final String body =
         renderTemplate(
             template,
             Map.of(
-                TOKEN_NAME,     user.getName().value(),
-                TOKEN_EMAIL,    user.getEmail().value(),
-                TOKEN_ROLE,     user.getRole().name()));
+                TOKEN_NAME, user.getName().value(),
+                TOKEN_EMAIL, user.getEmail().value(),
+                TOKEN_ROLE, user.getRole().name()));
     final EmailDestinationModel destination = buildDestination(user, SUBJECT_CREATED, body);
     sendOrLog(destination);
   }
 
   public void notifyUserUpdated(final UserModel user) {
+    if (enqueueDomainEvent(user, "user.updated")) return;
     final String template = loadTemplate("user-updated.html");
     final String body =
         renderTemplate(
             template,
             Map.of(
-                TOKEN_NAME,   user.getName().value(),
-                TOKEN_EMAIL,  user.getEmail().value(),
-                TOKEN_ROLE,   user.getRole().name(),
+                TOKEN_NAME, user.getName().value(),
+                TOKEN_EMAIL, user.getEmail().value(),
+                TOKEN_ROLE, user.getRole().name(),
                 TOKEN_STATUS, user.getStatus().name()));
     final EmailDestinationModel destination = buildDestination(user, SUBJECT_UPDATED, body);
     sendOrLog(destination);
+  }
+
+  private boolean enqueueDomainEvent(final UserModel user, final String name) {
+    if (domainEvents.isEmpty()) return false;
+    domainEvents
+        .get()
+        .enqueue(
+            DomainEvent.create(
+                name,
+                Map.of(
+                    "userId",
+                    user.getId().value(),
+                    "name",
+                    user.getName().value(),
+                    "email",
+                    user.getEmail().value(),
+                    "role",
+                    user.getRole().name(),
+                    "status",
+                    user.getStatus().name())));
+    return true;
   }
 
   private static EmailDestinationModel buildDestination(

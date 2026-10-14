@@ -3,6 +3,16 @@
 Aplicacion REST de gestion de usuarios basada en arquitectura hexagonal y DDD.
 Este fork esta preparado para `duvanAL/users-management-spring-boot-hexagonal-ddd` y PostgreSQL remoto.
 
+## Integración de tres microservicios con Kafka
+
+Este servicio conserva usuarios, autenticación, caché y avatares. El nuevo
+[servicio de cuentas](https://github.com/duvanAL/users-accounts-service) publica
+`account.created` y el [servicio de notificaciones](https://github.com/duvanAL/users-notification-service)
+consume eventos de ambos productores. La integración de usuarios se habilita con
+`APP_DOMAIN_EVENTS_ENABLED=true`, después de aplicar la migración SQL y separar el worker.
+La transición segura y las pruebas se describen en [esta guía](docs/kafka-domain-fan-in.md).
+El valor predeterminado mantiene el despliegue anterior hasta configurar los nuevos servicios.
+
 Este fork incorpora el historial actualizado del repositorio original (`upstream/main`) y conserva las adaptaciones de PostgreSQL, seguridad, Gmail API, Docker y despliegue web.
 
 ## Ramas y actualizacion del repositorio original
