@@ -38,6 +38,26 @@ class DeleteUserServiceTest {
   @Mock private DeleteUserPort deleteUserPort;
   @Mock private GetUserByIdPort getUserByIdPort;
 
+  @Test
+  void deletionPublishesOnlyItsIdWithoutEmailOrLegacyNotification() {
+    var events = mock(com.jcaa.usersmanagement.application.port.out.DomainEventPublisherPort.class);
+    var user = new UserModel(new UserId("u-001"), new UserName("Demo"),
+        new UserEmail("demo@example.test"), UserPassword.fromPlainText("Demo-password-123!"),
+        UserRole.MEMBER, UserStatus.ACTIVE);
+    when(getUserByIdPort.getById(any())).thenReturn(Optional.of(user));
+    try (ValidatorFactory factory = Validation.buildDefaultValidatorFactory()) {
+      var typed = new DeleteUserService(deleteUserPort, getUserByIdPort, factory.getValidator(),
+          Optional.of(events));
+      typed.execute(new DeleteUserCommand("u-001"));
+    }
+    var captor = org.mockito.ArgumentCaptor.forClass(com.jcaa.events.DomainEvent.class);
+    var order = inOrder(deleteUserPort, events);
+    order.verify(deleteUserPort).delete(new UserId("u-001"));
+    order.verify(events).enqueue(captor.capture());
+    assertEquals("user.deleted", captor.getValue().eventName());
+    assertEquals(java.util.Map.of("userId", "u-001"), captor.getValue().payload());
+  }
+
   private DeleteUserService service;
 
   @BeforeEach
