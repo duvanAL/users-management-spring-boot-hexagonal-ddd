@@ -59,6 +59,8 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers(HttpMethod.POST, USERS_PATH)
                     .permitAll()
+                    .requestMatchers("/api/users/*/files", "/api/users/*/files/**", "/api/users/*/storage-context")
+                    .authenticated()
                     .requestMatchers(HttpMethod.GET, USERS_PATH, USERS_DETAIL_PATH)
                     .hasAnyRole("ADMIN", "REVIEWER")
                     .requestMatchers(HttpMethod.PUT, USERS_DETAIL_PATH)
