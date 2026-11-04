@@ -43,3 +43,7 @@ CREATE TABLE IF NOT EXISTS domain_event_outbox (
   created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_domain_event_outbox_due ON domain_event_outbox(next_attempt_at, created_at);
+CREATE TABLE IF NOT EXISTS domain_event_outbox_versions (
+  entity_key VARCHAR(300) PRIMARY KEY,
+  version BIGINT NOT NULL CHECK (version > 0)
+);

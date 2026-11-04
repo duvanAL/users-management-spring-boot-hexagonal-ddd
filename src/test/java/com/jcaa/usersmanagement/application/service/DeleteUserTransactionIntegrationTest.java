@@ -53,6 +53,7 @@ class DeleteUserTransactionIntegrationTest {
     jdbc = new JdbcTemplate(dataSource);
     jdbc.execute("CREATE TABLE IF NOT EXISTS tx_users(id VARCHAR(36) PRIMARY KEY)");
     jdbc.execute(Files.readString(Path.of("src/main/resources/db/migration/V20261013_01__create_domain_event_outbox.sql")));
+    jdbc.execute(Files.readString(Path.of("src/main/resources/db/migration/V20261103_01__event_projection_versions.sql")));
     jdbc.update("DELETE FROM domain_event_outbox");
     jdbc.update("DELETE FROM tx_users");
     jdbc.update("INSERT INTO tx_users(id) VALUES ('u-1')");
