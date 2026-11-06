@@ -1,3 +1,5 @@
+# Render hosts the API only. PostgreSQL is external (Supabase).
+# Do not add managed databases or fromDatabase references to this Blueprint.
 services:
   - type: web
     name: users-management-api
