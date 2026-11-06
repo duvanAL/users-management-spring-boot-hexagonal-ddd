@@ -105,11 +105,11 @@ guía; las partes ya implementadas se revisarán y completarán según lo necesa
 14. **Verificación de Docker en GitHub.** Completado: después de las pruebas,
     CI construye la imagen, la ejecuta junto a un PostgreSQL temporal y valida
     `/actuator/health`. La imagen no se publica en un registro.
-15. **Despliegue en Render.** Completado: `render.yaml` en `deploy/render`
-    define la API y
-    PostgreSQL 17 en Virginia, conecta las variables de forma privada y espera
-    a que pasen los checks de CI. Se creó el Blueprint `users-management-render`
-    desde `deploy/render`; la base está disponible y la API figura Live.
+15. **Despliegue en Render.** El Blueprint `users-management-render` de
+    `deploy/render` administra únicamente la API. PostgreSQL se consume desde
+    Supabase con variables externas; la antigua base gratuita de Render se
+    retiró de la definición para impedir su recreación. La política de CI
+    rechaza `databases` y referencias `fromDatabase` en el Blueprint.
 16. **Guía de publicación.** Completada: README documenta el flujo de trabajo
     desde `develop`, la revisión de CI, la fusión a `deploy/render` y la
     comprobación del despliegue.

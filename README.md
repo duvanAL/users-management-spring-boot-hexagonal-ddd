@@ -191,13 +191,17 @@ Con `APP_EMAIL_ENABLED=false` (valor predeterminado), crear y actualizar usuario
 
 ## Despliegue en Render
 
-La rama `deploy/render` contiene el Blueprint `render.yaml`, ya conectado al
-fork. Este creó la API
-[`users-management-api`](https://users-management-api-a4yf.onrender.com) y la base
-PostgreSQL original `users-management-db` en Virginia. La API usa Java 17 dentro
-de Docker, toma el puerto asignado por Render mediante `PORT` y aplica
-`schema.sql` al arrancar. La base de Render se conservará durante el cambio a
-Supabase para permitir una vuelta atrás; no se elimina como parte del despliegue.
+La rama `deploy/render` contiene el Blueprint `render.yaml`, conectado al
+fork y limitado a la API
+[`users-management-api`](https://users-management-api-a4yf.onrender.com).
+PostgreSQL está alojado en Supabase: `DB_HOST`, `DB_PORT`, `DB_NAME`,
+`DB_USERNAME` y `DB_PASSWORD` se configuran en Render como valores externos.
+El Blueprint no debe declarar `databases` ni referencias `fromDatabase`.
+La base gratuita original de Render `users-management-db` quedó fuera de uso;
+se retira del Blueprint y su eliminación se administra por separado.
+La API usa Java 17 dentro de Docker y el puerto `PORT` asignado por Render.
+Las migraciones de producción se aplican explícitamente; el arranque conserva
+`DB_SCHEMA_INIT_MODE=never`.
 
 El endpoint [`/actuator/health`](https://users-management-api-a4yf.onrender.com/actuator/health)
 comprueba la aplicación y PostgreSQL sin exponer detalles. El último despliegue
