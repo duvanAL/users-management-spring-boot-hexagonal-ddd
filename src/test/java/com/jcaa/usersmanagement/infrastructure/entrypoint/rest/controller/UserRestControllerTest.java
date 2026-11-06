@@ -53,7 +53,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(
-    controllers = {UserRestController.class, HealthRestController.class},
+    controllers = {UserRestController.class, HealthRestController.class, ProfileRestController.class},
     properties = {
       "spring.main.web-application-type=servlet",
       "app.cors.allowed-origins=https://users-management-api-docs.vercel.app"
@@ -294,6 +294,23 @@ class UserRestControllerTest {
     mockMvc.perform(get("/api/users"))
         .andExpect(status().isInternalServerError())
         .andExpect(jsonPath("$.message").value("Error de persistencia."));
+  }
+
+  @Test
+  @WithMockUser(username = USER_ID, roles = "MEMBER")
+  void profileUsesAuthenticatedSubjectAndNeverReturnsPassword() throws Exception {
+    when(getUserByIdUseCase.execute(any())).thenReturn(user(UserRole.MEMBER));
+    mockMvc.perform(get("/api/me").param("userId", "someone-else"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(USER_ID))
+        .andExpect(jsonPath("$.password").doesNotExist());
+    verify(getUserByIdUseCase).execute(new GetUserByIdQuery(USER_ID));
+  }
+
+  @Test
+  void profileRejectsAnonymousRequests() throws Exception {
+    mockMvc.perform(get("/api/me")).andExpect(status().isUnauthorized());
+    verify(getUserByIdUseCase, never()).execute(any());
   }
 
   private static String createRequest(final String role) {
