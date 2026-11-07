@@ -77,7 +77,7 @@ services:
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
       - key: APP_CACHE_ENABLED
-        value: "false"
+        sync: false
       - key: APP_CACHE_TTL_SECONDS
         value: "300"
       - key: VALKEY_HOST
