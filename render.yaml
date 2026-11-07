@@ -1,3 +1,5 @@
+# Render hosts the API only. PostgreSQL is external (Supabase).
+# Do not add managed databases or fromDatabase references to this Blueprint.
 services:
   - type: web
     name: users-management-api
@@ -98,12 +100,3 @@ services:
         sync: false
       - key: GMAIL_SENDER_NAME
         value: Gestion de Usuarios
-
-databases:
-  - name: users-management-db
-    databaseName: crud_usuarios
-    user: users_management
-    plan: free
-    region: virginia
-    postgresMajorVersion: "17"
-    ipAllowList: []
